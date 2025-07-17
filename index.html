@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mappa Interattiva delle Sagre in Umbria</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        
+        .controls {
+            background-color: white;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .controls label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .controls input[type="date"] {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .controls button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .controls button:hover {
+            background-color: #2980b9;
+        }
+        
+        .controls .reset {
+            background-color: #e74c3c;
+        }
+        
+        .controls .reset:hover {
+            background-color: #c0392b;
+        }
+        
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+        
+        .popup-content {
+            max-width: 300px;
+        }
+        
+        .popup-content h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .popup-content p {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        
+        .popup-content .date {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .popup-content .food {
+            color: #27ae60;
+            font-style: italic;
+        }
+        
+        .popup-content a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .popup-content a:hover {
+            text-decoration: underline;
+        }
+        
+        .stats {
+            background-color: white;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stats p {
+            margin: 0;
+            font-size: 16px;
+            color: #555;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sagre in Umbria 2025</h1>
+        <p>Mappa Interattiva delle Feste Gastronomiche</p>
+    </div>
+    
+    <div class="controls">
+        <label for="dateFilter">Filtra per data:</label>
+        <input type="date" id="dateFilter" min="2025-07-01" max="2025-10-31">
+        <button onclick="filterByDate()">Applica Filtro</button>
+        <button class="reset" onclick="showAll()">Mostra Tutte</button>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div class="stats">
+        <p id="statsText">Caricamento mappa...</p>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    
+    <script>
+        // Aspetta che il DOM sia completamente caricato
+        document.addEventListener('DOMContentLoaded', function() {
+            // Dati delle sagre completi da tutte le pagine
+            const sagre = [
+                // Pagina 1
+                {
+                    name: "Collesanto Antria in Gastronomia",
+                    location: "Antria (PG)",
+                    coords: [43.139, 12.251],
+                    startDate: "2025-07-11",
+                    endDate: "2025-07-20",
+                    food: "Oca in porchetta, piatti tipici della tradizione contadina",
+                    description: "38ª edizione nel castello medievale di Antria",
+                    url: "https://www.umbriaeventi.com/collesanto-antria-in-gastronomia-sagra-dell-oca-antria-8460.htm"
+                },
+                {
+                    name: "Sagra del Brustico e del Prosciutto e Melone",
+                    location: "Villastrada (PG)",
+                    coords: [43.025, 12.089],
+                    startDate: "2025-07-16",
+                    endDate: "2025-07-20",
+                    food: "Brustico, prosciutto e melone",
+                    description: "33ª edizione presso il Club Sportivo Villastrada",
+                    url: "https://www.umbriaeventi.com/sagra-del-brustico-e-del-prosciutto-e-melone-villastrada-8788.htm"
+                },
+                {
+                    name: "Sagra dei Bringoli",
+                    location: "Lisciano Niccone (PG)",
+                    coords: [43.245, 12.095],
+                    startDate: "2025-07-17",
+                    endDate: "2025-07-20",
+                    food: "Bringoli (spaghetti di grandi dimensioni)",
+                    description: "48ª edizione con musica e ottima cucina",
+                    url: "https://www.umbriaeventi.com/sagra-dei-bringoli-lisciano-niccone-8374.htm"
+                },
+                {
+                    name: "Sagra degli Arrosticini",
+                    location: "Guardea (TR)",
+                    coords: [42.625, 12.295],
+                    startDate: "2025-07-18",
+                    endDate: "2025-07-27",
+                    food: "Arrosticini di carne",
+                    description: "8ª edizione presso Piazza Panfili",
+                    url: "https://www.umbriaeventi.com/festa-degli-arrosticini-guardea-terni-13308.htm"
+                },
+                {
+                    name: "Sagra della Pecora",
+                    location: "Civita Castellana (VT)",
+                    coords: [42.293, 12.414],
+                    startDate: "2025-07-18",
+                    endDate: "2025-07-20",
+                    food: "Piatti a base di pecora",
+                    description: "14ª edizione con musica e spettacoli",
+                    url: "https://www.umbriaeventi.com/sagra-della-pecora-fabrica-di-roma-13391.htm"
+                },
+                {
+                    name: "Sagra del Buon Mangiare",
+                    location: "Villa San Faustino (PG)",
+                    coords: [42.776, 12.669],
+                    startDate: "2025-07-18",
+                    endDate: "2025-07-27",
+                    food: "Cucina tradizionale locale",
+                    description: "37ª edizione nel borgo storico",
+                    url: "https://www.umbriaeventi.com/sagra-del-buon-mangiare-villa-san-faustino-8138.htm"
+                },
+                {
+                    name: "Castellonando",
+                    location: "Castellonalto (TR)",
+                    coords: [42.521, 12.771],
+                    startDate: "2025-07-18",
+                    endDate: "2025-07-27",
+                    food: "Percorso enogastronomico con 5 postazioni",
+                    description: "17ª edizione nel borgo a 664m slm",
+                    url: "https://www.umbriaeventi.com/feste_paesane_castellonando_2014_castellonalto_8426.htm"
+                },
+                {
+                    name: "Sagra del Baccalà",
+                    location: "Bomarzo (VT)",
+                    coords: [42.485, 12.249],
+                    startDate: "2025-07-18",
+                    endDate: "2025-08-03",
+                    food: "Baccalà in varie declinazioni",
+                    description: "13ª edizione per riscoprire i sapori di una volta",
+                    url: "https://www.umbriaeventi.com/sagra-del-baccala-bomarzo-12634.htm"
+                },
+                {
+                    name: "Sagra dell'Oca",
+                    location: "Castel Cellesi (VT)",
+                    coords: [42.445, 12.302],
+                    startDate: "2025-07-23",
+                    endDate: "2025-07-27",
+                    food: "Piatti a base di oca",
+                    description: "2ª edizione con musica dal vivo",
+                    url: "https://www.umbriaeventi.com/sagra-dell-oca-castel-cellesi-15585.htm"
+                },
+                {
+                    name: "In Piazza Sotto le Stelle",
+                    location: "Deruta (PG)",
+                    coords: [42.981, 12.419],
+                    startDate: "2025-07-24",
+                    endDate: "2025-08-02",
+                    food: "Vari piatti della tradizione",
+                    description: "Musica, ceramica e cultura in Piazza dei Consoli",
+                    url: "https://www.umbriaeventi.com/in-piazza-sotto-le-stelle-deruta-10262.htm"
+                },
+                {
+                    name: "Settimana Gastronomica - Sagra dell'Oca Arrosto",
+                    location: "Torchiagina (PG)",
+                    coords: [43.025, 12.613],
+                    startDate: "2025-07-25",
+                    endDate: "2025-08-03",
+                    food: "Oca arrosto e cucina tipica",
+                    description: "53ª edizione con serate danzanti",
+                    url: "https://www.umbriaeventi.com/settimana-gastronomica-torchiaginese-sagra-dell-oca-arrosto-torchiagina-8472.htm"
+                },
+                {
+                    name: "Sagra del Piccione",
+                    location: "Montecchio di Cortona (AR)",
+                    coords: [43.194, 11.987],
+                    startDate: "2025-07-25",
+                    endDate: "2025-08-03",
+                    food: "Piccione al girarrosto sulla brace",
+                    description: "50ª edizione presso il Campo Sportivo",
+                    url: "https://www.umbriaeventi.com/sagra-del-piccione-montecchio-di-cortona-13910.htm"
+                },
+                {
+                    name: "Sagra della Pizza al Forno",
+                    location: "Ponte San Lorenzo di Narni (TR)",
+                    coords: [42.507, 12.511],
+                    startDate: "2025-07-25",
+                    endDate: "2025-08-03",
+                    food: "Pizza al forno",
+                    description: "10 serate con musica live e area bimbi",
+                    url: "https://www.umbriaeventi.com/sagra-della-pizza-al-forno-ponte-san-lorenzo-di-narni-8871.htm"
+                },
+                {
+                    name: "Sagra dell'Oca",
+                    location: "Bettona (PG)",
+                    coords: [43.011, 12.485],
+                    startDate: "2025-07-25",
+                    endDate: "2025-08-03",
+                    food: "Ricette tradizionali a base di oca",
+                    description: "41ª edizione presso i Giardini di Santa Caterina",
+                    url: "https://www.umbriaeventi.com/sagra-dell-oca-bettona-8643.htm"
+                },
+                {
+                    name: "Sagra del Berlingozzo",
+                    location: "Pitigliano (PG)",
+                    coords: [42.852, 12.106],
+                    startDate: "2025-07-25",
+                    endDate: "2025-07-27",
+                    food: "Berlingozzo (ciambella all'anice)",
+                    description: "48ª edizione della festa tradizionale",
+                    url: "https://www.umbriaeventi.com/sagra-del-berlingozzo-pitigliano-8681.htm"
+                },
+                {
+                    name: "Sagra de u Cecu Maritu",
+                    location: "Aguzzo (TR)",
+                    coords: [42.485, 12.667],
+                    startDate: "2025-07-25",
+                    endDate: "2025-08-03",
+                    food: "Cecu Maritu (focaccia farcita con erbe)",
+                    description: "13ª edizione con storia curiosa sul nome",
+                    url: "https://www.umbriaeventi.com/sagra-de-u-cecu-maritu-aguzzo-8205.htm"
+                },
+                {
+                    name: "Serate Medievali",
+                    location: "Itieli (TR)",
+                    coords: [42.627, 12.544],
+                    startDate: "2025-07-25",
+                    endDate: "2025-07-26",
+                    food: "Cucina medievale",
+                    description: "Rievocazioni storiche nel castello",
+                    url: "https://www.umbriaeventi.com/serate-medievali-itieli-10590.htm"
+                },
+                // Pagina 2
+                {
+                    name: "Note di Luppolo",
+                    location: "San Martino al Cimino (VT)",
+                    coords: [42.370, 12.173],
+                    startDate: "2025-07-25",
+                    endDate: "2025-07-27",
+                    food: "Birra artigianale e street food",
+                    description: "8ª edizione dedicata alla birra artigianale",
+                    url: "https://www.umbriaeventi.com/note-di-luppolo-san-martino-al-cimino-12777.htm"
+                },
+                {
+                    name: "Sagra della Patata",
+                    location: "Giacconale (PG)",
+                    coords: [43.362, 12.734],
+                    startDate: "2025-07-26",
+                    endDate: "2025-07-27",
+                    food: "Piatti a base di patate",
+                    description: "1ª edizione con chef campani",
+                    url: "https://www.umbriaeventi.com/sagra-della-patata-sigillo-15868.htm"
+                },
+                {
+                    name: "Ferragosto Toreggiano",
+                    location: "Tuoro sul Trasimeno (PG)",
+                    coords: [43.212, 12.077],
+                    startDate: "2025-08-01",
+                    endDate: "2025-08-15",
+                    food: "Piatti prelibati della tradizione",
+                    description: "Rievocazioni storiche e cena storica romana",
+                    url: "https://www.umbriaeventi.com/ferragosto-toreggiano-tuoro-sul-trasimeno-8383.htm"
+                },
+                {
+                    name: "Sagra della Lumaca",
+                    location: "Cancelli (AN)",
+                    coords: [43.472, 12.904],
+                    startDate: "2025-07-31",
+                    endDate: "2025-08-03",
+                    food: "Lumache",
+                    description: "41ª edizione in località storica",
+                    url: "https://www.umbriaeventi.com/sagra-della-lumaca-cancelli-11643.htm"
+                },
+                {
+                    name: "Sagra del Cavatello",
+                    location: "Vitorchiano (VT)",
+                    coords: [42.468, 12.174],
+                    startDate: "2025-07-31",
+                    endDate: "2025-08-03",
+                    food: "Cavatello (pasta fresca tipica)",
+                    description: "44ª edizione nel borgo medievale",
+                    url: "https://www.umbriaeventi.com/sagra-del-cavatello-vitorchiano-14069.htm"
+                },
+                {
+                    name: "Sagra degli Gnocchi",
+                    location: "Guardea (TR)",
+                    coords: [42.625, 12.295],
+                    startDate: "2025-08-01",
+                    endDate: "2025-08-10",
+                    food: "Gnocchi",
+                    description: "35ª edizione, uno degli appuntamenti più attesi",
+                    url: "https://www.umbriaeventi.com/sagra-degli-gnocchi-guardea-8012.htm"
+                },
+                {
+                    name: "Sagra della Torta al Testo",
+                    location: "Sant'Egidio (PG)",
+                    coords: [43.071, 12.430],
+                    startDate: "2025-08-01",
+                    endDate: "2025-08-10",
+                    food: "Torta al testo cotta sotto la cenere",
+                    description: "52ª edizione dell'appuntamento estivo",
+                    url: "https://www.umbriaeventi.com/sagra-della-torta-al-testo-sant-egidio-8136.htm"
+                },
+                {
+                    name: "Sagra dello Gnocco",
+                    location: "Pieve di Compresseto (PG)",
+                    coords: [43.025, 12.567],
+                    startDate: "2025-08-01",
+                    endDate: "2025-08-03",
+                    food: "Gnocchi fatti a mano",
+                    description: "32ª edizione con partecipazione di tutto il paese",
+                    url: "https://www.umbriaeventi.com/sagra-dello-gnocco-pieve-di-compresseto-9060.htm"
+                },
+                {
+                    name: "Vinotricolando",
+                    location: "Otricoli (TR)",
+                    coords: [42.419, 12.482],
+                    startDate: "2025-08-01",
+                    endDate: "2025-08-03",
+                    food: "Vino e gastronomia del territorio",
+                    description: "Viaggio enogastronomico nei vicoli nascosti",
+                    url: "https://www.umbriaeventi.com/vinotricolando-otricoli-8867.htm"
+                },
+                {
+                    name: "Ferragosto a Quadrelli - Sagra della Rana Fritta",
+                    location: "Quadrelli (TR)",
+                    coords: [42.748, 12.394],
+                    startDate: "2025-08-06",
+                    endDate: "2025-08-15",
+                    food: "Rana fritta e piatti tradizionali",
+                    description: "Festa dell'Assunta con tradizioni secolari",
+                    url: "https://www.umbriaeventi.com/ferragosto-a-quadrelli-sagra-rana-fritta-8142.htm"
+                },
+                {
+                    name: "Sagra della Porchetta e dei Fagioli con le Cotiche",
+                    location: "Monte Santa Maria Tiberina (PG)",
+                    coords: [43.433, 12.127],
+                    startDate: "2025-08-07",
+                    endDate: "2025-08-10",
+                    food: "Porchetta e fagioli con le cotiche",
+                    description: "31ª edizione nel borgo medievale",
+                    url: "https://www.umbriaeventi.com/sagra-della-porchetta-e-dei-fagioli-con-le-cotiche-monte-santa-maria-tiberina-8688.htm"
+                },
+                {
+                    name: "Sagra della Tagliatella Casareccia",
+                    location: "Lisciano Niccone (PG)",
+                    coords: [43.245, 12.095],
+                    startDate: "2025-08-08",
+                    endDate: "2025-08-17",
+                    food: "Tagliatella casareccia",
+                    description: "49ª edizione nella Val di Pierle",
+                    url: "https://www.umbriaeventi.com/sagra-della-tagliatella-casareccia-lisciano-niccone-10716.htm"
+                },
+                {
+                    name: "Aperissima",
+                    location: "Capocavallo (PG)",
+                    coords: [43.069, 12.359],
+                    startDate: "2025-08-08",
+                    endDate: "2025-08-17",
+                    food: "Sangria, stinco e menù ricco",
+                    description: "50 anni della Pro Loco Aper90",
+                    url: "https://www.umbriaeventi.com/aperissima-sagra-della-sangria-e-dello-stinco-capocavallo-6377.htm"
+                },
+                {
+                    name: "Sagra del Fungo",
+                    location: "Pianello (PG)",
+                    coords: [43.105, 12.467],
+                    startDate: "2025-08-08",
+                    endDate: "2025-08-17",
+                    food: "Funghi e piatti della tradizione",
+                    description: "45ª edizione con musica e ottima cucina",
+                    url: "https://www.umbriaeventi.com/sagra-del-fungo-pianello-8413.htm"
+                },
+                {
+                    name: "Sagra della Cannelletta",
+                    location: "Castel Viscardo (TR)",
+                    coords: [42.758, 12.003],
+                    startDate: "2025-08-09",
+                    endDate: "2025-08-18",
+                    food: "Cannelletta e prodotti locali",
+                    description: "57ª edizione con tradizione enogastronomica",
+                    url: "https://www.umbriaeventi.com/sagra-della-cannelletta-castel-viscardo-8988.htm"
+                },
+                // Pagina 3
+                {
+                    name: "Sagra della Bistecca",
+                    location: "Cortona (AR)",
+                    coords: [43.275, 11.988],
+                    startDate: "2025-08-10",
+                    endDate: "2025-08-15",
+                    food: "Bistecca chianina",
+                    description: "64ª edizione nei Giardini del Parterre",
+                    url: "https://www.umbriaeventi.com/sagra-della-bistecca-cortona-14814.htm"
+                },
+                {
+                    name: "Sagra dello Strozzaprete",
+                    location: "Paciano (PG)",
+                    coords: [43.026, 11.959],
+                    startDate: "2025-08-10",
+                    endDate: "2025-08-17",
+                    food: "Strozzaprete (pasta tradizionale)",
+                    description: "6ª edizione nel meraviglioso borgo",
+                    url: "https://www.umbriaeventi.com/sagra-dello-strozzaprete-paciano-13967.htm"
+                },
+                {
+                    name: "Sagra della Pizza",
+                    location: "San Lorenzo di Cortona (AR)",
+                    coords: [43.275, 11.938],
+                    startDate: "2025-08-11",
+                    endDate: "2025-08-17",
+                    food: "Pizza e specialità locali",
+                    description: "Estate con pizza e divertimento",
+                    url: "https://www.umbriaeventi.com/sagra-della-pizza-san-lorenzo-cortona-14441.htm"
+                },
+                {
+                    name: "Sotto le Stelle di Montecastrilli - Sagra dell'Anatra",
+                    location: "Montecastrilli (TR)",
+                    coords: [42.649, 12.488],
+                    startDate: "2025-08-14",
+                    endDate: "2025-08-23",
+                    food: "Anatra secondo tradizione locale",
+                    description: "31ª edizione della rinomata sagra",
+                    url: "https://www.umbriaeventi.com/sotto-le-stelle-di-montecastrilli-sagra-dell-anatra-montecastrilli-8813.htm"
+                },
+                {
+                    name: "Sagra dell'Agnello e dei Prodotti Tipici",
+                    location: "Villanova di Marsciano (PG)",
+                    coords: [42.955, 12.237],
+                    startDate: "2025-08-14",
+                    endDate: "2025-08-23",
+                    food: "Agnello e macedonia",
+                    description: "36ª edizione, già Sagra della Macedonia",
+                    url: "https://www.umbriaeventi.com/sagra-dell-agnello-scottadito-villanova-di-marsciano-8108.htm"
+                },
+                {
+                    name: "Pasta e Basta",
+                    location: "Chitignano (AR)",
+                    coords: [43.606, 11.891],
+                    startDate: "2025-08-20",
+                    endDate: "2025-08-20",
+                    food: "Vari tipi di pasta",
+                    description: "Giornata dedicata alla pasta",
+                    url: "https://www.umbriaeventi.com/pasta-e-basta-chitignano-15227.htm"
+                },
+                {
+                    name: "Sagra della Lumaca",
+                    location: "Cantalupo di Bevagna (PG)",
+                    coords: [42.901, 12.548],
+                    startDate: "2025-08-21",
+                    endDate: "2025-08-30",
+                    food: "Lumache preparate secondo tradizione",
+                    description: "46ª edizione della celebre sagra",
+                    url: "https://www.umbriaeventi.com/sagra-della-lumaca-cantalupo-di-bevagna-7791.htm"
+                },
+                {
+                    name: "Bisteccando - A Tavola con il Gigante Bianco",
+                    location: "Castiglion Fiorentino (AR)",
+                    coords: [43.344, 11.919],
+                    startDate: "2025-08-22",
+                    endDate: "2025-08-31",
+                    food: "Bistecca di chianina",
+                    description: "15ª edizione al Circolo di Manciano",
+                    url: "https://www.umbriaeventi.com/bisteccando-a-tavola-con-il-gigante-bianco-chianina-castiglion-fiorentino-arezzo-12029.htm"
+                },
+                {
+                    name: "Sagra delle Carni Spoletine e della Frittella",
+                    location: "Baiano (PG)",
+                    coords: [42.742, 12.739],
+                    startDate: "2025-08-22",
+                    endDate: "2025-08-31",
+                    food: "Carni tipiche spoletine e frittella",
+                    description: "7ª edizione nel luogo di Galileo Galilei",
+                    url: "https://www.umbriaeventi.com/sagra-delle-carni-spoletine-e-della-frittella-baiano-8182.htm"
+                },
+                {
+                    name: "Sagra della Bruschetta",
+                    location: "Morano Osteria (PG)",
+                    coords: [42.984, 12.237],
+                    startDate: "2025-08-26",
+                    endDate: "2025-08-31",
+                    food: "Bruschetta",
+                    description: "44ª edizione su due livelli",
+                    url: "https://www.umbriaeventi.com/sagra-della-bruschetta-morano-osteria-8828.htm"
+                },
+                {
+                    name: "Sagra del Fagiolo",
+                    location: "Sutri (VT)",
+                    coords: [42.241, 12.227],
+                    startDate: "2025-08-29",
+                    endDate: "2025-08-31",
+                    food: "Fagiolo sutrino (fagiolo della regina)",
+                    description: "51ª edizione nel borgo su sperone tufaceo",
+                    url: "https://www.umbriaeventi.com/sagra-del-fagiolo-sutri-13483.htm"
+                },
+                {
+                    name: "Sagra della Scartocciatura",
+                    location: "San Martino in Campo (PG)",
+                    coords: [43.012, 12.382],
+                    startDate: "2025-08-29",
+                    endDate: "2025-09-07",
+                    food: "Scartocciatura delle pannocchie",
+                    description: "43ª edizione con mostre e serate danzanti",
+                    url: "https://www.umbriaeventi.com/sagra-della-scartocciatura-san-martino-in-campo-8052.htm"
+                },
+                {
+                    name: "Sagra della Porchetta",
+                    location: "Monte San Savino (AR)",
+                    coords: [43.331, 11.725],
+                    startDate: "2025-09-10",
+                    endDate: "2025-09-14",
+                    food: "Porchetta (detentrice Guinness dei Primati)",
+                    description: "61ª edizione nella città rinascimentale",
+                    url: "https://www.umbriaeventi.com/sagra-della-porchetta-monte-san-savino-14790.htm"
+                },
+                {
+                    name: "Sagra della Canaiola",
+                    location: "Pretola (PG)",
+                    coords: [43.063, 12.288],
+                    startDate: "2025-09-19",
+                    endDate: "2025-09-28",
+                    food: "Canaiola e piatti tradizionali umbri",
+                    description: "Torre medievale come location",
+                    url: "https://www.umbriaeventi.com/sagra-della-canaiola-pretola-8838.htm"
+                },
+                {
+                    name: "Sagra della Polenta",
+                    location: "Monterchi (AR)",
+                    coords: [43.485, 12.114],
+                    startDate: "2025-09-19",
+                    endDate: "2025-09-21",
+                    food: "Polenta e cucina tipica toscana",
+                    description: "50ª edizione di una delle sagre più longeve",
+                    url: "https://www.umbriaeventi.com/sagra-della-polenta-monterchi-10785.htm"
+                },
+                {
+                    name: "I Giorni di Bacco",
+                    location: "Castiglion Fiorentino (AR)",
+                    coords: [43.344, 11.919],
+                    startDate: "2025-09-19",
+                    endDate: "2025-09-28",
+                    food: "Vini e prodotti enogastronomici locali",
+                    description: "17ª edizione nei Giardini Pubblici",
+                    url: "https://www.umbriaeventi.com/i-giorni-di-bacco-castiglion-fiorentino-12031.htm"
+                },
+                {
+                    name: "Sagra della Castagna",
+                    location: "Morra (PG)",
+                    coords: [42.995, 12.134],
+                    startDate: "2025-10-17",
+                    endDate: "2025-10-19",
+                    food: "Castagne e prodotti autunnali",
+                    description: "50ª edizione della tradizionale sagra",
+                    url: "https://www.umbriaeventi.com/sagra-della-castagna-morra-4691.htm"
+                },
+                // Pagina 4 - Eventi passati ma con date per il 2025
+                {
+                    name: "Sagra del Fricò",
+                    location: "Caprara (PG)",
+                    coords: [43.053, 12.343],
+                    startDate: "2025-07-11",
+                    endDate: "2025-07-13",
+                    food: "Fricò (piatto tradizionale)",
+                    description: "Tradizionale appuntamento gastronomico e culturale",
+                    url: "https://www.umbriaeventi.com/sagra-del-frico-caprara-2776.htm"
+                },
+                {
+                    name: "Sagra della Tortuccia",
+                    location: "Castel Giorgio (TR)",
+                    coords: [42.707, 11.979],
+                    startDate: "2025-07-09",
+                    endDate: "2025-07-13",
+                    food: "Tortuccia (specialità locale)",
+                    description: "22ª edizione con musica dal vivo",
+                    url: "https://www.umbriaeventi.com/sagra-della-tortuccia-castel-giorgio-3172.htm"
+                },
+                {
+                    name: "Beercollando",
+                    location: "Casacastalda (PG)",
+                    coords: [43.203, 12.644],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-05",
+                    food: "Birra artigianale e cibo sfizioso",
+                    description: "7ª edizione del festival della birra",
+                    url: "https://www.umbriaeventi.com/beercollando-casacastalda-13245.htm"
+                },
+                {
+                    name: "Sagra della Frittella",
+                    location: "Pozzo (PG)",
+                    coords: [42.837, 12.544],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-06",
+                    food: "Frittelle dolci tradizionali",
+                    description: "43ª edizione tra gli ulivi",
+                    url: "https://www.umbriaeventi.com/sagra-della-frittella-pozzo-8549.htm"
+                },
+                {
+                    name: "Sagra della Torta al Testo",
+                    location: "Selvarelle (TR)",
+                    coords: [42.671, 12.601],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-06",
+                    food: "Torta al testo (focaccia di acqua e farina)",
+                    description: "Cotta su lastra infuocata",
+                    url: "https://www.umbriaeventi.com/sagra-della-torta-al-testo-selvarelle-13145.htm"
+                },
+                {
+                    name: "Sagra dei Maccaroni Canepinesi",
+                    location: "Canepina (VT)",
+                    coords: [42.381, 12.233],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-06",
+                    food: "Maccaroni canepinesi (fieno canepinese)",
+                    description: "12ª edizione della pasta sfoglia sottilissima",
+                    url: "https://www.umbriaeventi.com/sagra-dei-maccaroni-canepinesi-canepina-13494.htm"
+                },
+                {
+                    name: "Sagra del Cinghiale",
+                    location: "Soriano nel Cimino (VT)",
+                    coords: [42.419, 12.233],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-06",
+                    food: "Cinghiale in varie preparazioni",
+                    description: "16ª edizione della festa del cinghiale",
+                    url: "https://www.umbriaeventi.com/sagra-del-cinghiale-soriano-nel-cimino-15493.htm"
+                },
+                {
+                    name: "Taverna del Daino",
+                    location: "Castel dell'Aquila (TR)",
+                    coords: [42.545, 12.867],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Daino e maiale",
+                    description: "Eccezionali prelibatezze locali",
+                    url: "https://www.umbriaeventi.com/sagra-del-daino-e-del-maiale-castel-dell-aquila-4276.htm"
+                },
+                {
+                    name: "Sagra dei Frutti del Bosco",
+                    location: "Papiano (PG)",
+                    coords: [43.285, 12.433],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Frutti di bosco e torta al testo",
+                    description: "36ª edizione con tradizione contadina",
+                    url: "https://www.umbriaeventi.com/sagra-dei-frutti-del-bosco-e-mirtillo-papiano-5729.htm"
+                },
+                {
+                    name: "Sagra della Granocchia",
+                    location: "Capanne (PG)",
+                    coords: [42.955, 12.387],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Granocchia e piatti tipici locali",
+                    description: "46ª edizione dal 1978",
+                    url: "https://www.umbriaeventi.com/sagra-della-granocchia-capanne-8035.htm"
+                },
+                {
+                    name: "Sagra del Pesce Sfilettato",
+                    location: "Sant'Arcangelo (PG)",
+                    coords: [43.153, 12.141],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Pesce sfilettato del Lago Trasimeno",
+                    description: "40ª edizione della tradizione lacustre",
+                    url: "https://www.umbriaeventi.com/sagra-del-pesce-sfilettato-sant-arcangelo-8140.htm"
+                },
+                {
+                    name: "Sagra del Tartufo",
+                    location: "Ripa (PG)",
+                    coords: [43.067, 12.321],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Tartufo e piatti della tradizione",
+                    description: "37ª edizione dell'appuntamento estivo",
+                    url: "https://www.umbriaeventi.com/sagra-del-tartufo-ripa-8169.htm"
+                },
+                {
+                    name: "Badiola nel Verde - Sagra del Baccalà",
+                    location: "Badiola (PG)",
+                    coords: [43.086, 12.465],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Baccalà alla perugina",
+                    description: "32ª edizione con divertimento e musica",
+                    url: "https://www.umbriaeventi.com/badiola-nel-verde-sagra-del-baccala-alla-perugina-badiola-8493.htm"
+                },
+                {
+                    name: "Sagra della Pappardella",
+                    location: "Finocchieto (TR)",
+                    coords: [42.512, 12.685],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Pappardelle fresche fatte a mano",
+                    description: "19ª edizione del festival della pappardella",
+                    url: "https://www.umbriaeventi.com/sagra-della-pappardella-finocchieto-stroncone-11859.htm"
+                },
+                {
+                    name: "Sagra della Fregnaccia",
+                    location: "Montecampano (TR)",
+                    coords: [42.583, 12.469],
+                    startDate: "2025-07-04",
+                    endDate: "2025-07-13",
+                    food: "Fregnaccia con erbe spontanee",
+                    description: "Piatto povero di origine contadina",
+                    url: "https://www.umbriaeventi.com/sagra-della-fregnaccia-montecampano-5709.htm"
+                },
+                {
+                    name: "Trebbiatura di Cannaiola",
+                    location: "Cannaiola (PG)",
+                    coords: [42.868, 12.451],
+                    startDate: "2025-07-03",
+                    endDate: "2025-07-13",
+                    food: "Cucina tradizionale contadina",
+                    description: "35ª edizione rievocazione storica",
+                    url: "https://www.umbriaeventi.com/rievocazione-storica-della-trebbiatura-cannaiola-1305.htm"
+                },
+                {
+                    name: "Sagra della Lumaca",
+                    location: "Moiano (PG)",
+                    coords: [43.045, 12.607],
+                    startDate: "2025-07-03",
+                    endDate: "2025-07-06",
+                    food: "Lumache della tradizione contadina",
+                    description: "12ª edizione del cibo povero ma gustoso",
+                    url: "https://www.umbriaeventi.com/sagra-della-lumaca-moiano-8968.htm"
+                },
+                {
+                    name: "Sagra del Cacciucco",
+                    location: "Renzino (AR)",
+                    coords: [43.355, 11.823],
+                    startDate: "2025-07-02",
+                    endDate: "2025-07-06",
+                    food: "Cacciucco e specialità di pesce",
+                    description: "Specialità toscane nell'area sportiva",
+                    url: "https://www.umbriaeventi.com/sagra-del-cacciucco-foiano-della-chiana-13968.htm"
+                }
+            ];
+
+            // Inizializza la mappa
+            let map = L.map('map').setView([42.9, 12.4], 8);
+            
+            // Aggiungi il layer della mappa
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Array per memorizzare tutti i marker
+            let markers = [];
+            
+            // Funzione per creare i marker
+            function createMarkers() {
+                sagre.forEach(sagra => {
+                    const marker = L.marker(sagra.coords)
+                        .bindPopup(createPopupContent(sagra));
+                    marker.sagraData = sagra;
+                    markers.push(marker);
+                    marker.addTo(map);
+                });
+                updateStats();
+            }
+            
+            // Funzione per creare il contenuto del popup
+            function createPopupContent(sagra) {
+                return `
+                    <div class="popup-content">
+                        <h3>${sagra.name}</h3>
+                        <p><strong>📍 Località:</strong> ${sagra.location}</p>
+                        <p class="date">📅 Date: ${formatDate(sagra.startDate)} - ${formatDate(sagra.endDate)}</p>
+                        <p class="food">🍽️ Specialità: ${sagra.food}</p>
+                        <p>📝 ${sagra.description}</p>
+                        <p><a href="${sagra.url}" target="_blank">🔗 Maggiori informazioni</a></p>
+                    </div>
+                `;
+            }
+            
+            // Funzione per formattare le date
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                const options = { day: 'numeric', month: 'short' };
+                return date.toLocaleDateString('it-IT', options);
+            }
+            
+            // Funzione per filtrare per data
+            window.filterByDate = function() {
+                const selectedDate = document.getElementById('dateFilter').value;
+                if (!selectedDate) {
+                    alert('Seleziona una data per filtrare');
+                    return;
+                }
+                
+                let visibleCount = 0;
+                markers.forEach(marker => {
+                    const sagra = marker.sagraData;
+                    const filterDate = new Date(selectedDate);
+                    const startDate = new Date(sagra.startDate);
+                    const endDate = new Date(sagra.endDate);
+                    
+                    if (filterDate >= startDate && filterDate <= endDate) {
+                        marker.addTo(map);
+                        visibleCount++;
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                });
+                
+                document.getElementById('statsText').textContent = 
+                    `Trovate ${visibleCount} sagre attive il ${formatDate(selectedDate)}`;
+            }
+            
+            // Funzione per mostrare tutte le sagre
+            window.showAll = function() {
+                markers.forEach(marker => {
+                    marker.addTo(map);
+                });
+                document.getElementById('dateFilter').value = '';
+                updateStats();
+            }
+            
+            // Funzione per aggiornare le statistiche
+            function updateStats() {
+                document.getElementById('statsText').textContent = 
+                    `Visualizzate tutte le ${markers.length} sagre`;
+            }
+            
+            // Inizializza i marker
+            createMarkers();
+        });
+    </script>
+</body>
+</html>
