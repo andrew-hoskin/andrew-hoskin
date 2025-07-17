@@ -28,6 +28,84 @@
             font-size: 28px;
         }
         
+        .mobile-filter-toggle {
+            display: none;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: calc(100% - 20px);
+            box-sizing: border-box;
+        }
+        
+        .mobile-filter-toggle:active {
+            background-color: #2980b9;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .header p {
+                font-size: 14px;
+                margin: 5px 0 0 0;
+            }
+            
+            .mobile-filter-toggle {
+                display: block;
+            }
+            
+            .controls {
+                display: none;
+                flex-direction: column;
+                padding: 10px;
+                gap: 15px;
+            }
+            
+            .controls.active {
+                display: flex;
+            }
+            
+            .filter-group {
+                flex-direction: column;
+                width: 100%;
+                gap: 5px;
+            }
+            
+            .controls input[type="text"],
+            .controls input[type="date"] {
+                width: 100%;
+                box-sizing: border-box;
+            }
+            
+            .controls button {
+                width: 100%;
+            }
+            
+            #map {
+                height: 400px;
+            }
+            
+            .distance-list {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            .stats {
+                margin: 10px;
+                padding: 10px;
+            }
+        }
+        
         .controls {
             background-color: white;
             padding: 15px;
@@ -48,6 +126,7 @@
         .controls label {
             font-weight: bold;
             color: #333;
+            white-space: nowrap;
         }
         
         .controls input[type="date"],
@@ -71,6 +150,7 @@
             cursor: pointer;
             font-size: 16px;
             transition: background-color 0.3s;
+            white-space: nowrap;
         }
         
         .controls button:hover {
@@ -139,6 +219,48 @@
             color: #555;
         }
         
+        .distance-list {
+            background-color: white;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .distance-list h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .distance-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .distance-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .distance-item .name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .distance-item .info {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .distance-item .distance {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
         .loading {
             text-align: center;
             padding: 50px;
@@ -153,9 +275,19 @@
         <p>Mappa Interattiva delle Feste Gastronomiche</p>
     </div>
     
-    <div class="controls">
+    <button class="mobile-filter-toggle" onclick="toggleFilters()">🔍 Mostra/Nascondi Filtri</button>
+    
+    <div class="controls" id="filterControls">
         <div class="filter-group">
-            <label for="textFilter">Cerca per nome o località:</label>
+            <label for="myLocation">La mia posizione:</label>
+            <div style="display: flex; gap: 5px; width: 100%;">
+                <input type="text" id="myLocation" placeholder="es. Todi, Perugia, Assisi..." onkeypress="if(event.key==='Enter') setMyLocation()" style="flex: 1;">
+                <button onclick="setMyLocation()">📍 Imposta</button>
+                <button onclick="useCurrentLocation()" title="Usa la posizione GPS">📡 GPS</button>
+            </div>
+        </div>
+        <div class="filter-group">
+            <label for="textFilter">Cerca sagra:</label>
             <input type="text" id="textFilter" placeholder="es. Bringoli, Cortona, Oca..." oninput="filterByText()">
         </div>
         <div class="filter-group">
@@ -170,6 +302,11 @@
     
     <div class="stats">
         <p id="statsText">Caricamento mappa...</p>
+    </div>
+    
+    <div id="distanceList" class="distance-list" style="display: none;">
+        <h3>Sagre ordinate per distanza dalla tua posizione:</h3>
+        <div id="distanceContent"></div>
     </div>
 
     <!-- Leaflet JS -->
@@ -866,6 +1003,229 @@
             
             // Array per memorizzare tutti i marker
             let markers = [];
+            let userMarker = null;
+            let userLocation = null;
+            
+            // Coordinate approssimative di città italiane comuni
+            const townCoordinates = {
+                // Umbria
+                'todi': [42.781, 12.407],
+                'perugia': [43.110, 12.390],
+                'assisi': [43.070, 12.620],
+                'spoleto': [42.740, 12.740],
+                'terni': [42.563, 12.643],
+                'orvieto': [42.719, 12.110],
+                'gubbio': [43.351, 12.577],
+                'foligno': [42.956, 12.703],
+                'città di castello': [43.456, 12.238],
+                'citta di castello': [43.456, 12.238],
+                'narni': [42.517, 12.516],
+                'amelia': [42.556, 12.413],
+                'spello': [42.990, 12.670],
+                'bevagna': [42.932, 12.609],
+                'montefalco': [42.892, 12.650],
+                'norcia': [42.793, 13.093],
+                'castiglione del lago': [43.126, 12.055],
+                'marsciano': [42.909, 12.337],
+                'umbertide': [43.305, 12.330],
+                'bastia umbra': [43.068, 12.549],
+                'corciano': [43.128, 12.301],
+                // Nearby regions
+                'cortona': [43.275, 11.988],
+                'arezzo': [43.463, 11.880],
+                'viterbo': [42.420, 12.108],
+                'roma': [41.902, 12.496],
+                'siena': [43.318, 11.331],
+                'firenze': [43.769, 11.256],
+                'florence': [43.769, 11.256],
+                'rieti': [42.404, 12.856]
+            };
+            
+            // Funzione per toggle dei filtri su mobile
+            window.toggleFilters = function() {
+                const controls = document.getElementById('filterControls');
+                controls.classList.toggle('active');
+            }
+            
+            // Funzione per usare la posizione GPS corrente
+            window.useCurrentLocation = function() {
+                if (!navigator.geolocation) {
+                    alert('La geolocalizzazione non è supportata dal tuo browser');
+                    return;
+                }
+                
+                // Mostra messaggio di caricamento
+                document.getElementById('statsText').textContent = '📡 Rilevamento posizione GPS...';
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Rimuovi il marker precedente se esiste
+                        if (userMarker) {
+                            map.removeLayer(userMarker);
+                        }
+                        
+                        // Crea un'icona personalizzata per l'utente
+                        const userIcon = L.divIcon({
+                            html: '<div style="background-color: #e74c3c; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
+                        });
+                        
+                        // Aggiungi il nuovo marker
+                        userMarker = L.marker([lat, lng], {icon: userIcon})
+                            .bindPopup('<strong>La tua posizione GPS</strong>')
+                            .addTo(map);
+                        
+                        userLocation = [lat, lng];
+                        
+                        // Centra la mappa sulla posizione dell'utente
+                        map.setView([lat, lng], 10);
+                        
+                        // Aggiorna il campo di testo
+                        document.getElementById('myLocation').value = 'Posizione GPS';
+                        
+                        // Calcola e mostra le distanze
+                        showDistances();
+                        
+                        document.getElementById('statsText').textContent = '📍 Posizione GPS rilevata';
+                    },
+                    function(error) {
+                        let errorMessage = 'Errore nel rilevamento della posizione: ';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage += 'Permesso negato. Abilita la geolocalizzazione nelle impostazioni.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage += 'Posizione non disponibile.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage += 'Timeout nella richiesta.';
+                                break;
+                            default:
+                                errorMessage += 'Errore sconosciuto.';
+                        }
+                        alert(errorMessage);
+                        updateStats();
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            }
+            
+            // Funzione per impostare la posizione dell'utente
+            window.setMyLocation = function() {
+                const locationInput = document.getElementById('myLocation').value.toLowerCase().trim();
+                
+                if (!locationInput) {
+                    alert('Inserisci il nome di una città');
+                    return;
+                }
+                
+                const coords = townCoordinates[locationInput];
+                
+                if (!coords) {
+                    alert(`Non riesco a trovare "${locationInput}". Prova con una città più grande come Todi, Perugia, Assisi, Spoleto, Terni, ecc.`);
+                    return;
+                }
+                
+                // Rimuovi il marker precedente se esiste
+                if (userMarker) {
+                    map.removeLayer(userMarker);
+                }
+                
+                // Crea un'icona personalizzata per l'utente
+                const userIcon = L.divIcon({
+                    html: '<div style="background-color: #e74c3c; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                
+                // Aggiungi il nuovo marker
+                userMarker = L.marker(coords, {icon: userIcon})
+                    .bindPopup(`<strong>La tua posizione: ${locationInput.charAt(0).toUpperCase() + locationInput.slice(1)}</strong>`)
+                    .addTo(map);
+                
+                userLocation = coords;
+                
+                // Centra la mappa sulla posizione dell'utente
+                map.setView(coords, 10);
+                
+                // Calcola e mostra le distanze
+                showDistances();
+            }
+            
+            // Funzione per calcolare la distanza tra due punti (formula di Haversine)
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Raggio della Terra in km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+            
+            // Funzione per mostrare le sagre ordinate per distanza
+            function showDistances() {
+                if (!userLocation) return;
+                
+                // Calcola le distanze per tutte le sagre visibili
+                const sagreWithDistance = [];
+                markers.forEach(marker => {
+                    if (map.hasLayer(marker)) {
+                        const sagra = marker.sagraData;
+                        const distance = calculateDistance(
+                            userLocation[0], userLocation[1],
+                            sagra.coords[0], sagra.coords[1]
+                        );
+                        sagreWithDistance.push({
+                            sagra: sagra,
+                            distance: distance,
+                            marker: marker
+                        });
+                    }
+                });
+                
+                // Ordina per distanza
+                sagreWithDistance.sort((a, b) => a.distance - b.distance);
+                
+                // Crea l'HTML per la lista
+                let html = '';
+                sagreWithDistance.forEach(item => {
+                    html += `
+                        <div class="distance-item" onclick="focusOnSagra(${item.sagra.coords[0]}, ${item.sagra.coords[1]})">
+                            <div class="name">${item.sagra.name}</div>
+                            <div class="info">
+                                📍 ${item.sagra.location} - 
+                                <span class="distance">${item.distance.toFixed(1)} km</span> - 
+                                📅 ${formatDate(item.sagra.startDate)} - ${formatDate(item.sagra.endDate)}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('distanceContent').innerHTML = html;
+                document.getElementById('distanceList').style.display = 'block';
+            }
+            
+            // Funzione per centrare la mappa su una sagra specifica
+            window.focusOnSagra = function(lat, lng) {
+                map.setView([lat, lng], 12);
+                
+                // Trova e apri il popup del marker
+                markers.forEach(marker => {
+                    if (marker.sagraData.coords[0] === lat && marker.sagraData.coords[1] === lng) {
+                        marker.openPopup();
+                    }
+                });
+            }
             
             // Funzione per creare i marker
             function createMarkers() {
@@ -926,6 +1286,11 @@
                 
                 document.getElementById('statsText').textContent = 
                     `Trovate ${visibleCount} sagre che contengono "${searchText}"`;
+                
+                // Aggiorna le distanze se c'è una posizione utente
+                if (userLocation) {
+                    showDistances();
+                }
             }
             
             // Funzione per filtrare per data
@@ -953,6 +1318,11 @@
                 
                 document.getElementById('statsText').textContent = 
                     `Trovate ${visibleCount} sagre attive il ${formatDate(selectedDate)}`;
+                
+                // Aggiorna le distanze se c'è una posizione utente
+                if (userLocation) {
+                    showDistances();
+                }
             }
             
             // Funzione per mostrare tutte le sagre
@@ -963,6 +1333,13 @@
                 document.getElementById('dateFilter').value = '';
                 document.getElementById('textFilter').value = '';
                 updateStats();
+                
+                // Aggiorna le distanze se c'è una posizione utente
+                if (userLocation) {
+                    showDistances();
+                } else {
+                    document.getElementById('distanceList').style.display = 'none';
+                }
             }
             
             // Funzione per aggiornare le statistiche
