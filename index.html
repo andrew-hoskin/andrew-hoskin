@@ -39,16 +39,27 @@
             flex-wrap: wrap;
         }
         
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
         .controls label {
             font-weight: bold;
             color: #333;
         }
         
-        .controls input[type="date"] {
+        .controls input[type="date"],
+        .controls input[type="text"] {
             padding: 8px;
             border: 2px solid #ddd;
             border-radius: 4px;
             font-size: 16px;
+        }
+        
+        .controls input[type="text"] {
+            width: 250px;
         }
         
         .controls button {
@@ -143,9 +154,15 @@
     </div>
     
     <div class="controls">
-        <label for="dateFilter">Filtra per data:</label>
-        <input type="date" id="dateFilter" min="2025-07-01" max="2025-10-31">
-        <button onclick="filterByDate()">Applica Filtro</button>
+        <div class="filter-group">
+            <label for="textFilter">Cerca per nome o località:</label>
+            <input type="text" id="textFilter" placeholder="es. Bringoli, Cortona, Oca..." oninput="filterByText()">
+        </div>
+        <div class="filter-group">
+            <label for="dateFilter">Filtra per data:</label>
+            <input type="date" id="dateFilter" min="2025-07-01" max="2025-10-31">
+            <button onclick="filterByDate()">Applica Filtro</button>
+        </div>
         <button class="reset" onclick="showAll()">Mostra Tutte</button>
     </div>
     
@@ -883,6 +900,34 @@
                 return date.toLocaleDateString('it-IT', options);
             }
             
+            // Funzione per filtrare per testo
+            window.filterByText = function() {
+                const searchText = document.getElementById('textFilter').value.toLowerCase();
+                
+                if (!searchText) {
+                    showAll();
+                    return;
+                }
+                
+                let visibleCount = 0;
+                markers.forEach(marker => {
+                    const sagra = marker.sagraData;
+                    const nameMatch = sagra.name.toLowerCase().includes(searchText);
+                    const locationMatch = sagra.location.toLowerCase().includes(searchText);
+                    const foodMatch = sagra.food.toLowerCase().includes(searchText);
+                    
+                    if (nameMatch || locationMatch || foodMatch) {
+                        marker.addTo(map);
+                        visibleCount++;
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                });
+                
+                document.getElementById('statsText').textContent = 
+                    `Trovate ${visibleCount} sagre che contengono "${searchText}"`;
+            }
+            
             // Funzione per filtrare per data
             window.filterByDate = function() {
                 const selectedDate = document.getElementById('dateFilter').value;
@@ -916,6 +961,7 @@
                     marker.addTo(map);
                 });
                 document.getElementById('dateFilter').value = '';
+                document.getElementById('textFilter').value = '';
                 updateStats();
             }
             
