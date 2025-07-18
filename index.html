@@ -2,1354 +2,1471 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mappa Interattiva delle Sagre in Umbria</title>
-    
-    <!-- Leaflet CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sagre in Umbria 2025 - Mappa Interattiva</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --gray: #6b7280;
+            --radius: 16px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        * {
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
-        }
-        
-        .header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-        
-        .mobile-filter-toggle {
-            display: none;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            width: calc(100% - 20px);
             box-sizing: border-box;
         }
-        
-        .mobile-filter-toggle:active {
-            background-color: #2980b9;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+            overflow-x: hidden;
+            position: relative;
+            height: 100vh;
         }
-        
-        @media (max-width: 768px) {
-            .header {
-                padding: 10px;
-            }
-            
-            .header h1 {
-                font-size: 20px;
-            }
-            
-            .header p {
-                font-size: 14px;
-                margin: 5px 0 0 0;
-            }
-            
-            .mobile-filter-toggle {
-                display: block;
-            }
-            
-            .controls {
-                display: none !important;
-                flex-direction: column;
-                padding: 10px;
-                gap: 15px;
-            }
-            
-            .controls.active {
-                display: flex !important;
-            }
-            
-            .filter-group {
-                flex-direction: column;
-                width: 100%;
-                gap: 5px;
-            }
-            
-            .controls input[type="text"],
-            .controls input[type="date"] {
-                width: 100%;
-                box-sizing: border-box;
-            }
-            
-            .controls button {
-                width: 100%;
-            }
-            
-            #map {
-                height: 400px;
-            }
-            
-            .distance-list {
-                margin: 10px;
-                padding: 15px;
-            }
-            
-            .stats {
-                margin: 10px;
-                padding: 10px;
-            }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            --dark: #f9fafb;
+            --light: #1f2937;
+            --gray: #9ca3af;
+            background: #111827;
         }
-        
-        .controls {
-            background-color: white;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
+
+        .dark-mode .header {
+            background: #1f2937;
         }
-        
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+
+        .dark-mode .bottom-nav {
+            background: #1f2937;
+            border-top-color: #374151;
         }
-        
-        .controls label {
-            font-weight: bold;
-            color: #333;
-            white-space: nowrap;
+
+        .dark-mode .filter-sheet {
+            background: #1f2937;
         }
-        
-        .controls input[type="date"],
-        .controls input[type="text"] {
-            padding: 8px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
+
+        .dark-mode .list-card {
+            background: #374151;
         }
-        
-        .controls input[type="text"] {
-            width: 250px;
-        }
-        
-        .controls button {
-            background-color: #3498db;
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
+            padding: 1rem;
+            box-shadow: var(--shadow);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-button {
+            background: rgba(255, 255, 255, 0.2);
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-            white-space: nowrap;
+            transition: all 0.3s ease;
+            color: white;
         }
-        
-        .controls button:hover {
-            background-color: #2980b9;
+
+        .icon-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
         }
-        
-        .controls .reset {
-            background-color: #e74c3c;
+
+        /* Main content area */
+        .content {
+            position: fixed;
+            top: 60px;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            overflow: hidden;
         }
-        
-        .controls .reset:hover {
-            background-color: #c0392b;
-        }
-        
+
+        /* Map container */
         #map {
-            height: 600px;
+            height: 100%;
             width: 100%;
+            transition: opacity 0.3s ease;
         }
-        
-        .popup-content {
-            max-width: 300px;
+
+        /* List view */
+        .list-view {
+            height: 100%;
+            overflow-y: auto;
+            padding: 1rem;
+            display: none;
+            animation: fadeIn 0.3s ease;
         }
-        
-        .popup-content h3 {
-            margin-top: 0;
-            color: #2c3e50;
-            font-size: 18px;
+
+        .list-view.active {
+            display: block;
         }
-        
-        .popup-content p {
-            margin: 8px 0;
-            line-height: 1.5;
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        
-        .popup-content .date {
-            font-weight: bold;
-            color: #e74c3c;
+
+        .list-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-        
-        .popup-content .food {
-            color: #27ae60;
+
+        .list-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .list-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .list-card.favorite::before {
+            background: var(--secondary);
+        }
+
+        .list-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .list-card h3 {
+            font-size: 1.1rem;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .list-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .list-card-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .list-card-food {
             font-style: italic;
+            color: var(--success);
+            font-size: 0.875rem;
         }
-        
-        .popup-content a {
-            color: #3498db;
+
+        .favorite-button {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            padding: 0.25rem;
+        }
+
+        .favorite-button:hover {
+            transform: scale(1.2);
+        }
+
+        .favorite-button.active {
+            color: var(--secondary);
+        }
+
+        /* Bottom navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-around;
+            padding: 0.5rem 0;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            color: var(--gray);
             text-decoration: none;
         }
-        
-        .popup-content a:hover {
-            text-decoration: underline;
+
+        .nav-item:hover {
+            color: var(--primary);
         }
-        
-        .stats {
-            background-color: white;
-            padding: 15px;
-            margin: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-item span {
+            font-size: 0.75rem;
+        }
+
+        .nav-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--secondary);
+            color: white;
+            font-size: 0.625rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            z-index: 999;
+        }
+
+        .fab-button {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .fab-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .fab-button:active {
+            transform: scale(0.95);
+        }
+
+        .fab-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--secondary);
+            color: white;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            min-width: 20px;
             text-align: center;
         }
-        
-        .stats p {
-            margin: 0;
-            font-size: 16px;
-            color: #555;
-        }
-        
-        .distance-list {
-            background-color: white;
-            padding: 20px;
-            margin: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            max-height: 400px;
+
+        /* Filter Sheet (Bottom Sheet) */
+        .filter-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: var(--radius) var(--radius) 0 0;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 2000;
+            max-height: 80vh;
             overflow-y: auto;
         }
-        
-        .distance-list h3 {
-            margin-top: 0;
-            color: #2c3e50;
+
+        .filter-sheet.active {
+            transform: translateY(0);
         }
-        
-        .distance-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
+
+        .sheet-handle {
+            width: 40px;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            margin: 0.75rem auto;
+        }
+
+        .sheet-header {
+            padding: 0 1.5rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sheet-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .sheet-content {
+            padding: 1.5rem;
+        }
+
+        .filter-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-section label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .location-input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .location-input-group input {
+            flex: 1;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        
-        .distance-item:hover {
-            background-color: #f8f9fa;
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
         }
-        
-        .distance-item .name {
-            font-weight: bold;
-            color: #2c3e50;
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
         }
-        
-        .distance-item .info {
-            font-size: 14px;
-            color: #666;
-            margin-top: 4px;
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: var(--dark);
         }
-        
-        .distance-item .distance {
-            color: #e74c3c;
-            font-weight: bold;
+
+        .btn-secondary:hover {
+            background: #d1d5db;
         }
-        
-        .loading {
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            justify-content: center;
+        }
+
+        .btn-block {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Food category chips */
+        .category-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .chip {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            background: #f3f4f6;
+            border: 2px solid transparent;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chip:hover {
+            background: #e5e7eb;
+        }
+
+        .chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Date range picker */
+        .date-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .date-input {
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+        }
+
+        /* Loading states */
+        .skeleton {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .loading-card {
+            height: 120px;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+        }
+
+        /* Popup styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 0;
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+            width: 280px !important;
+        }
+
+        .popup-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+
+        .popup-header h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .popup-location {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .popup-body {
+            padding: 1rem;
+        }
+
+        .popup-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .popup-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .popup-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .popup-actions .btn {
+            flex: 1;
+            font-size: 0.875rem;
+            padding: 0.5rem;
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--dark);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 3000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .content {
+                top: 70px;
+            }
+            
+            .filter-sheet {
+                max-width: 600px;
+                left: 50%;
+                transform: translateX(-50%) translateY(100%);
+                border-radius: var(--radius);
+                margin-bottom: 1rem;
+            }
+            
+            .filter-sheet.active {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Backdrop for filter sheet */
+        .backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1999;
+        }
+
+        .backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* No results state */
+        .no-results {
             text-align: center;
-            padding: 50px;
-            font-size: 18px;
-            color: #666;
+            padding: 3rem 1rem;
+            color: var(--gray);
+        }
+
+        .no-results svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Sagre in Umbria 2025</h1>
-        <p>Mappa Interattiva delle Feste Gastronomiche</p>
-    </div>
-    
-    <button class="mobile-filter-toggle" onclick="toggleFilters()">🔍 Mostra/Nascondi Filtri</button>
-    
-    <div class="controls" id="filterControls">
-        <div class="filter-group">
-            <label for="myLocation">La mia posizione:</label>
-            <div style="display: flex; gap: 5px; width: 100%;">
-                <input type="text" id="myLocation" placeholder="es. Todi, Perugia, Assisi..." onkeypress="if(event.key==='Enter') setMyLocation()" style="flex: 1;">
-                <button onclick="setMyLocation()">📍 Imposta</button>
-                <button onclick="useCurrentLocation()" title="Usa la posizione GPS">📡 GPS</button>
+    <!-- Header -->
+    <header class="header">
+        <h1>🎪 Sagre Umbria 2025</h1>
+        <div class="header-actions">
+            <button class="icon-button" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <div class="content">
+        <!-- Map View -->
+        <div id="map"></div>
+        
+        <!-- List View -->
+        <div class="list-view" id="listView">
+            <div id="listContent">
+                <!-- List items will be dynamically inserted here -->
             </div>
         </div>
-        <div class="filter-group">
-            <label for="textFilter">Cerca sagra:</label>
-            <input type="text" id="textFilter" placeholder="es. Bringoli, Cortona, Oca..." oninput="filterByText()">
-        </div>
-        <div class="filter-group">
-            <label for="dateFilter">Filtra per data:</label>
-            <input type="date" id="dateFilter" min="2025-07-01" max="2025-10-31">
-            <button onclick="filterByDate()">Applica Filtro</button>
-        </div>
-        <button class="reset" onclick="showAll()">Mostra Tutte</button>
-    </div>
-    
-    <div id="map"></div>
-    
-    <div class="stats">
-        <p id="statsText">Caricamento mappa...</p>
-    </div>
-    
-    <div id="distanceList" class="distance-list" style="display: none;">
-        <h3>Sagre ordinate per distanza dalla tua posizione:</h3>
-        <div id="distanceContent"></div>
     </div>
 
-    <!-- Leaflet JS -->
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="showView('map')" id="navMap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>Mappa</span>
+        </button>
+        <button class="nav-item" onclick="showView('list')" id="navList">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            <span>Lista</span>
+        </button>
+        <button class="nav-item" onclick="showView('favorites')" id="navFavorites" style="position: relative;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span>Preferiti</span>
+            <span class="nav-badge" id="favoritesCount" style="display: none;">0</span>
+        </button>
+        <button class="nav-item" onclick="showNearMe()" id="navNearMe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+            </svg>
+            <span>Vicino a me</span>
+        </button>
+    </nav>
+
+    <!-- Floating Action Button -->
+    <div class="fab">
+        <button class="fab-button" onclick="toggleFilterSheet()" aria-label="Open filters">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            <span class="fab-badge" id="filterBadge" style="display: none;">0</span>
+        </button>
+    </div>
+
+    <!-- Filter Sheet -->
+    <div class="backdrop" id="backdrop" onclick="closeFilterSheet()"></div>
+    <div class="filter-sheet" id="filterSheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+            <h2>Filtri di ricerca</h2>
+            <button class="icon-button" onclick="closeFilterSheet()" style="background: var(--gray); opacity: 0.1;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--dark)" stroke="var(--dark)" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="sheet-content">
+            <!-- Search -->
+            <div class="filter-section">
+                <label for="searchInput">Cerca sagra</label>
+                <input type="text" 
+                       id="searchInput" 
+                       class="search-input" 
+                       placeholder="Nome, località, specialità..."
+                       oninput="handleSearch(this.value)">
+                <div id="searchSuggestions"></div>
+            </div>
+
+            <!-- Location -->
+            <div class="filter-section">
+                <label for="locationInput">La mia posizione</label>
+                <div class="location-input-group">
+                    <input type="text" 
+                           id="locationInput" 
+                           class="search-input" 
+                           placeholder="es. Perugia, Assisi, Todi...">
+                    <button class="btn btn-primary btn-icon" onclick="setUserLocation()" title="Imposta posizione">
+                        📍
+                    </button>
+                    <button class="btn btn-secondary btn-icon" onclick="useGPS()" title="Usa GPS">
+                        📡
+                    </button>
+                </div>
+            </div>
+
+            <!-- Food Categories -->
+            <div class="filter-section">
+                <label>Categorie di cibo</label>
+                <div class="category-chips" id="categoryChips">
+                    <div class="chip" data-category="pasta" onclick="toggleCategory(this)">🍝 Pasta</div>
+                    <div class="chip" data-category="carne" onclick="toggleCategory(this)">🥩 Carne</div>
+                    <div class="chip" data-category="pesce" onclick="toggleCategory(this)">🐟 Pesce</div>
+                    <div class="chip" data-category="dolci" onclick="toggleCategory(this)">🍰 Dolci</div>
+                    <div class="chip" data-category="verdure" onclick="toggleCategory(this)">🥗 Verdure</div>
+                    <div class="chip" data-category="formaggi" onclick="toggleCategory(this)">🧀 Formaggi</div>
+                    <div class="chip" data-category="vino" onclick="toggleCategory(this)">🍷 Vino</div>
+                    <div class="chip" data-category="altro" onclick="toggleCategory(this)">🍽️ Altro</div>
+                </div>
+            </div>
+
+            <!-- Date Range -->
+            <div class="filter-section">
+                <label>Periodo</label>
+                <div class="date-range">
+                    <input type="date" 
+                           id="dateFrom" 
+                           class="date-input" 
+                           min="2025-07-01" 
+                           max="2025-10-31"
+                           onchange="updateDateFilter()">
+                    <input type="date" 
+                           id="dateTo" 
+                           class="date-input" 
+                           min="2025-07-01" 
+                           max="2025-10-31"
+                           onchange="updateDateFilter()">
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="filter-section">
+                <button class="btn btn-primary btn-block" onclick="applyFilters()">
+                    Applica filtri
+                </button>
+                <button class="btn btn-secondary btn-block" onclick="resetFilters()" style="margin-top: 0.5rem;">
+                    Reimposta filtri
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
     <script>
-        // Aspetta che il DOM sia completamente caricato
-        document.addEventListener('DOMContentLoaded', function() {
-            // Dati delle sagre completi da tutte le pagine
-            const sagre = [
-                // Pagina 1
-                {
-                    name: "Collesanto Antria in Gastronomia",
-                    location: "Antria (PG)",
-                    coords: [43.139, 12.251],
-                    startDate: "2025-07-11",
-                    endDate: "2025-07-20",
-                    food: "Oca in porchetta, piatti tipici della tradizione contadina",
-                    description: "38ª edizione nel castello medievale di Antria",
-                    url: "https://www.umbriaeventi.com/collesanto-antria-in-gastronomia-sagra-dell-oca-antria-8460.htm"
-                },
-                {
-                    name: "Sagra del Brustico e del Prosciutto e Melone",
-                    location: "Villastrada (PG)",
-                    coords: [43.025, 12.089],
-                    startDate: "2025-07-16",
-                    endDate: "2025-07-20",
-                    food: "Brustico, prosciutto e melone",
-                    description: "33ª edizione presso il Club Sportivo Villastrada",
-                    url: "https://www.umbriaeventi.com/sagra-del-brustico-e-del-prosciutto-e-melone-villastrada-8788.htm"
-                },
-                {
-                    name: "Sagra dei Bringoli",
-                    location: "Lisciano Niccone (PG)",
-                    coords: [43.245, 12.095],
-                    startDate: "2025-07-17",
-                    endDate: "2025-07-20",
-                    food: "Bringoli (spaghetti di grandi dimensioni)",
-                    description: "48ª edizione con musica e ottima cucina",
-                    url: "https://www.umbriaeventi.com/sagra-dei-bringoli-lisciano-niccone-8374.htm"
-                },
-                {
-                    name: "Sagra degli Arrosticini",
-                    location: "Guardea (TR)",
-                    coords: [42.625, 12.295],
-                    startDate: "2025-07-18",
-                    endDate: "2025-07-27",
-                    food: "Arrosticini di carne",
-                    description: "8ª edizione presso Piazza Panfili",
-                    url: "https://www.umbriaeventi.com/festa-degli-arrosticini-guardea-terni-13308.htm"
-                },
-                {
-                    name: "Sagra della Pecora",
-                    location: "Civita Castellana (VT)",
-                    coords: [42.293, 12.414],
-                    startDate: "2025-07-18",
-                    endDate: "2025-07-20",
-                    food: "Piatti a base di pecora",
-                    description: "14ª edizione con musica e spettacoli",
-                    url: "https://www.umbriaeventi.com/sagra-della-pecora-fabrica-di-roma-13391.htm"
-                },
-                {
-                    name: "Sagra del Buon Mangiare",
-                    location: "Villa San Faustino (PG)",
-                    coords: [42.776, 12.669],
-                    startDate: "2025-07-18",
-                    endDate: "2025-07-27",
-                    food: "Cucina tradizionale locale",
-                    description: "37ª edizione nel borgo storico",
-                    url: "https://www.umbriaeventi.com/sagra-del-buon-mangiare-villa-san-faustino-8138.htm"
-                },
-                {
-                    name: "Castellonando",
-                    location: "Castellonalto (TR)",
-                    coords: [42.521, 12.771],
-                    startDate: "2025-07-18",
-                    endDate: "2025-07-27",
-                    food: "Percorso enogastronomico con 5 postazioni",
-                    description: "17ª edizione nel borgo a 664m slm",
-                    url: "https://www.umbriaeventi.com/feste_paesane_castellonando_2014_castellonalto_8426.htm"
-                },
-                {
-                    name: "Sagra del Baccalà",
-                    location: "Bomarzo (VT)",
-                    coords: [42.485, 12.249],
-                    startDate: "2025-07-18",
-                    endDate: "2025-08-03",
-                    food: "Baccalà in varie declinazioni",
-                    description: "13ª edizione per riscoprire i sapori di una volta",
-                    url: "https://www.umbriaeventi.com/sagra-del-baccala-bomarzo-12634.htm"
-                },
-                {
-                    name: "Sagra dell'Oca",
-                    location: "Castel Cellesi (VT)",
-                    coords: [42.445, 12.302],
-                    startDate: "2025-07-23",
-                    endDate: "2025-07-27",
-                    food: "Piatti a base di oca",
-                    description: "2ª edizione con musica dal vivo",
-                    url: "https://www.umbriaeventi.com/sagra-dell-oca-castel-cellesi-15585.htm"
-                },
-                {
-                    name: "In Piazza Sotto le Stelle",
-                    location: "Deruta (PG)",
-                    coords: [42.981, 12.419],
-                    startDate: "2025-07-24",
-                    endDate: "2025-08-02",
-                    food: "Vari piatti della tradizione",
-                    description: "Musica, ceramica e cultura in Piazza dei Consoli",
-                    url: "https://www.umbriaeventi.com/in-piazza-sotto-le-stelle-deruta-10262.htm"
-                },
-                {
-                    name: "Settimana Gastronomica - Sagra dell'Oca Arrosto",
-                    location: "Torchiagina (PG)",
-                    coords: [43.025, 12.613],
-                    startDate: "2025-07-25",
-                    endDate: "2025-08-03",
-                    food: "Oca arrosto e cucina tipica",
-                    description: "53ª edizione con serate danzanti",
-                    url: "https://www.umbriaeventi.com/settimana-gastronomica-torchiaginese-sagra-dell-oca-arrosto-torchiagina-8472.htm"
-                },
-                {
-                    name: "Sagra del Piccione",
-                    location: "Montecchio di Cortona (AR)",
-                    coords: [43.194, 11.987],
-                    startDate: "2025-07-25",
-                    endDate: "2025-08-03",
-                    food: "Piccione al girarrosto sulla brace",
-                    description: "50ª edizione presso il Campo Sportivo",
-                    url: "https://www.umbriaeventi.com/sagra-del-piccione-montecchio-di-cortona-13910.htm"
-                },
-                {
-                    name: "Sagra della Pizza al Forno",
-                    location: "Ponte San Lorenzo di Narni (TR)",
-                    coords: [42.507, 12.511],
-                    startDate: "2025-07-25",
-                    endDate: "2025-08-03",
-                    food: "Pizza al forno",
-                    description: "10 serate con musica live e area bimbi",
-                    url: "https://www.umbriaeventi.com/sagra-della-pizza-al-forno-ponte-san-lorenzo-di-narni-8871.htm"
-                },
-                {
-                    name: "Sagra dell'Oca",
-                    location: "Bettona (PG)",
-                    coords: [43.011, 12.485],
-                    startDate: "2025-07-25",
-                    endDate: "2025-08-03",
-                    food: "Ricette tradizionali a base di oca",
-                    description: "41ª edizione presso i Giardini di Santa Caterina",
-                    url: "https://www.umbriaeventi.com/sagra-dell-oca-bettona-8643.htm"
-                },
-                {
-                    name: "Sagra del Berlingozzo",
-                    location: "Pitigliano (PG)",
-                    coords: [42.852, 12.106],
-                    startDate: "2025-07-25",
-                    endDate: "2025-07-27",
-                    food: "Berlingozzo (ciambella all'anice)",
-                    description: "48ª edizione della festa tradizionale",
-                    url: "https://www.umbriaeventi.com/sagra-del-berlingozzo-pitigliano-8681.htm"
-                },
-                {
-                    name: "Sagra de u Cecu Maritu",
-                    location: "Aguzzo (TR)",
-                    coords: [42.485, 12.667],
-                    startDate: "2025-07-25",
-                    endDate: "2025-08-03",
-                    food: "Cecu Maritu (focaccia farcita con erbe)",
-                    description: "13ª edizione con storia curiosa sul nome",
-                    url: "https://www.umbriaeventi.com/sagra-de-u-cecu-maritu-aguzzo-8205.htm"
-                },
-                {
-                    name: "Serate Medievali",
-                    location: "Itieli (TR)",
-                    coords: [42.627, 12.544],
-                    startDate: "2025-07-25",
-                    endDate: "2025-07-26",
-                    food: "Cucina medievale",
-                    description: "Rievocazioni storiche nel castello",
-                    url: "https://www.umbriaeventi.com/serate-medievali-itieli-10590.htm"
-                },
-                // Pagina 2
-                {
-                    name: "Note di Luppolo",
-                    location: "San Martino al Cimino (VT)",
-                    coords: [42.370, 12.173],
-                    startDate: "2025-07-25",
-                    endDate: "2025-07-27",
-                    food: "Birra artigianale e street food",
-                    description: "8ª edizione dedicata alla birra artigianale",
-                    url: "https://www.umbriaeventi.com/note-di-luppolo-san-martino-al-cimino-12777.htm"
-                },
-                {
-                    name: "Sagra della Patata",
-                    location: "Giacconale (PG)",
-                    coords: [43.362, 12.734],
-                    startDate: "2025-07-26",
-                    endDate: "2025-07-27",
-                    food: "Piatti a base di patate",
-                    description: "1ª edizione con chef campani",
-                    url: "https://www.umbriaeventi.com/sagra-della-patata-sigillo-15868.htm"
-                },
-                {
-                    name: "Ferragosto Toreggiano",
-                    location: "Tuoro sul Trasimeno (PG)",
-                    coords: [43.212, 12.077],
-                    startDate: "2025-08-01",
-                    endDate: "2025-08-15",
-                    food: "Piatti prelibati della tradizione",
-                    description: "Rievocazioni storiche e cena storica romana",
-                    url: "https://www.umbriaeventi.com/ferragosto-toreggiano-tuoro-sul-trasimeno-8383.htm"
-                },
-                {
-                    name: "Sagra della Lumaca",
-                    location: "Cancelli (AN)",
-                    coords: [43.472, 12.904],
-                    startDate: "2025-07-31",
-                    endDate: "2025-08-03",
-                    food: "Lumache",
-                    description: "41ª edizione in località storica",
-                    url: "https://www.umbriaeventi.com/sagra-della-lumaca-cancelli-11643.htm"
-                },
-                {
-                    name: "Sagra del Cavatello",
-                    location: "Vitorchiano (VT)",
-                    coords: [42.468, 12.174],
-                    startDate: "2025-07-31",
-                    endDate: "2025-08-03",
-                    food: "Cavatello (pasta fresca tipica)",
-                    description: "44ª edizione nel borgo medievale",
-                    url: "https://www.umbriaeventi.com/sagra-del-cavatello-vitorchiano-14069.htm"
-                },
-                {
-                    name: "Sagra degli Gnocchi",
-                    location: "Guardea (TR)",
-                    coords: [42.625, 12.295],
-                    startDate: "2025-08-01",
-                    endDate: "2025-08-10",
-                    food: "Gnocchi",
-                    description: "35ª edizione, uno degli appuntamenti più attesi",
-                    url: "https://www.umbriaeventi.com/sagra-degli-gnocchi-guardea-8012.htm"
-                },
-                {
-                    name: "Sagra della Torta al Testo",
-                    location: "Sant'Egidio (PG)",
-                    coords: [43.071, 12.430],
-                    startDate: "2025-08-01",
-                    endDate: "2025-08-10",
-                    food: "Torta al testo cotta sotto la cenere",
-                    description: "52ª edizione dell'appuntamento estivo",
-                    url: "https://www.umbriaeventi.com/sagra-della-torta-al-testo-sant-egidio-8136.htm"
-                },
-                {
-                    name: "Sagra dello Gnocco",
-                    location: "Pieve di Compresseto (PG)",
-                    coords: [43.025, 12.567],
-                    startDate: "2025-08-01",
-                    endDate: "2025-08-03",
-                    food: "Gnocchi fatti a mano",
-                    description: "32ª edizione con partecipazione di tutto il paese",
-                    url: "https://www.umbriaeventi.com/sagra-dello-gnocco-pieve-di-compresseto-9060.htm"
-                },
-                {
-                    name: "Vinotricolando",
-                    location: "Otricoli (TR)",
-                    coords: [42.419, 12.482],
-                    startDate: "2025-08-01",
-                    endDate: "2025-08-03",
-                    food: "Vino e gastronomia del territorio",
-                    description: "Viaggio enogastronomico nei vicoli nascosti",
-                    url: "https://www.umbriaeventi.com/vinotricolando-otricoli-8867.htm"
-                },
-                {
-                    name: "Ferragosto a Quadrelli - Sagra della Rana Fritta",
-                    location: "Quadrelli (TR)",
-                    coords: [42.748, 12.394],
-                    startDate: "2025-08-06",
-                    endDate: "2025-08-15",
-                    food: "Rana fritta e piatti tradizionali",
-                    description: "Festa dell'Assunta con tradizioni secolari",
-                    url: "https://www.umbriaeventi.com/ferragosto-a-quadrelli-sagra-rana-fritta-8142.htm"
-                },
-                {
-                    name: "Sagra della Porchetta e dei Fagioli con le Cotiche",
-                    location: "Monte Santa Maria Tiberina (PG)",
-                    coords: [43.433, 12.127],
-                    startDate: "2025-08-07",
-                    endDate: "2025-08-10",
-                    food: "Porchetta e fagioli con le cotiche",
-                    description: "31ª edizione nel borgo medievale",
-                    url: "https://www.umbriaeventi.com/sagra-della-porchetta-e-dei-fagioli-con-le-cotiche-monte-santa-maria-tiberina-8688.htm"
-                },
-                {
-                    name: "Sagra della Tagliatella Casareccia",
-                    location: "Lisciano Niccone (PG)",
-                    coords: [43.245, 12.095],
-                    startDate: "2025-08-08",
-                    endDate: "2025-08-17",
-                    food: "Tagliatella casareccia",
-                    description: "49ª edizione nella Val di Pierle",
-                    url: "https://www.umbriaeventi.com/sagra-della-tagliatella-casareccia-lisciano-niccone-10716.htm"
-                },
-                {
-                    name: "Aperissima",
-                    location: "Capocavallo (PG)",
-                    coords: [43.069, 12.359],
-                    startDate: "2025-08-08",
-                    endDate: "2025-08-17",
-                    food: "Sangria, stinco e menù ricco",
-                    description: "50 anni della Pro Loco Aper90",
-                    url: "https://www.umbriaeventi.com/aperissima-sagra-della-sangria-e-dello-stinco-capocavallo-6377.htm"
-                },
-                {
-                    name: "Sagra del Fungo",
-                    location: "Pianello (PG)",
-                    coords: [43.105, 12.467],
-                    startDate: "2025-08-08",
-                    endDate: "2025-08-17",
-                    food: "Funghi e piatti della tradizione",
-                    description: "45ª edizione con musica e ottima cucina",
-                    url: "https://www.umbriaeventi.com/sagra-del-fungo-pianello-8413.htm"
-                },
-                {
-                    name: "Sagra della Cannelletta",
-                    location: "Castel Viscardo (TR)",
-                    coords: [42.758, 12.003],
-                    startDate: "2025-08-09",
-                    endDate: "2025-08-18",
-                    food: "Cannelletta e prodotti locali",
-                    description: "57ª edizione con tradizione enogastronomica",
-                    url: "https://www.umbriaeventi.com/sagra-della-cannelletta-castel-viscardo-8988.htm"
-                },
-                // Pagina 3
-                {
-                    name: "Sagra della Bistecca",
-                    location: "Cortona (AR)",
-                    coords: [43.275, 11.988],
-                    startDate: "2025-08-10",
-                    endDate: "2025-08-15",
-                    food: "Bistecca chianina",
-                    description: "64ª edizione nei Giardini del Parterre",
-                    url: "https://www.umbriaeventi.com/sagra-della-bistecca-cortona-14814.htm"
-                },
-                {
-                    name: "Sagra dello Strozzaprete",
-                    location: "Paciano (PG)",
-                    coords: [43.026, 11.959],
-                    startDate: "2025-08-10",
-                    endDate: "2025-08-17",
-                    food: "Strozzaprete (pasta tradizionale)",
-                    description: "6ª edizione nel meraviglioso borgo",
-                    url: "https://www.umbriaeventi.com/sagra-dello-strozzaprete-paciano-13967.htm"
-                },
-                {
-                    name: "Sagra della Pizza",
-                    location: "San Lorenzo di Cortona (AR)",
-                    coords: [43.275, 11.938],
-                    startDate: "2025-08-11",
-                    endDate: "2025-08-17",
-                    food: "Pizza e specialità locali",
-                    description: "Estate con pizza e divertimento",
-                    url: "https://www.umbriaeventi.com/sagra-della-pizza-san-lorenzo-cortona-14441.htm"
-                },
-                {
-                    name: "Sotto le Stelle di Montecastrilli - Sagra dell'Anatra",
-                    location: "Montecastrilli (TR)",
-                    coords: [42.649, 12.488],
-                    startDate: "2025-08-14",
-                    endDate: "2025-08-23",
-                    food: "Anatra secondo tradizione locale",
-                    description: "31ª edizione della rinomata sagra",
-                    url: "https://www.umbriaeventi.com/sotto-le-stelle-di-montecastrilli-sagra-dell-anatra-montecastrilli-8813.htm"
-                },
-                {
-                    name: "Sagra dell'Agnello e dei Prodotti Tipici",
-                    location: "Villanova di Marsciano (PG)",
-                    coords: [42.955, 12.237],
-                    startDate: "2025-08-14",
-                    endDate: "2025-08-23",
-                    food: "Agnello e macedonia",
-                    description: "36ª edizione, già Sagra della Macedonia",
-                    url: "https://www.umbriaeventi.com/sagra-dell-agnello-scottadito-villanova-di-marsciano-8108.htm"
-                },
-                {
-                    name: "Pasta e Basta",
-                    location: "Chitignano (AR)",
-                    coords: [43.606, 11.891],
-                    startDate: "2025-08-20",
-                    endDate: "2025-08-20",
-                    food: "Vari tipi di pasta",
-                    description: "Giornata dedicata alla pasta",
-                    url: "https://www.umbriaeventi.com/pasta-e-basta-chitignano-15227.htm"
-                },
-                {
-                    name: "Sagra della Lumaca",
-                    location: "Cantalupo di Bevagna (PG)",
-                    coords: [42.901, 12.548],
-                    startDate: "2025-08-21",
-                    endDate: "2025-08-30",
-                    food: "Lumache preparate secondo tradizione",
-                    description: "46ª edizione della celebre sagra",
-                    url: "https://www.umbriaeventi.com/sagra-della-lumaca-cantalupo-di-bevagna-7791.htm"
-                },
-                {
-                    name: "Bisteccando - A Tavola con il Gigante Bianco",
-                    location: "Castiglion Fiorentino (AR)",
-                    coords: [43.344, 11.919],
-                    startDate: "2025-08-22",
-                    endDate: "2025-08-31",
-                    food: "Bistecca di chianina",
-                    description: "15ª edizione al Circolo di Manciano",
-                    url: "https://www.umbriaeventi.com/bisteccando-a-tavola-con-il-gigante-bianco-chianina-castiglion-fiorentino-arezzo-12029.htm"
-                },
-                {
-                    name: "Sagra delle Carni Spoletine e della Frittella",
-                    location: "Baiano (PG)",
-                    coords: [42.742, 12.739],
-                    startDate: "2025-08-22",
-                    endDate: "2025-08-31",
-                    food: "Carni tipiche spoletine e frittella",
-                    description: "7ª edizione nel luogo di Galileo Galilei",
-                    url: "https://www.umbriaeventi.com/sagra-delle-carni-spoletine-e-della-frittella-baiano-8182.htm"
-                },
-                {
-                    name: "Sagra della Bruschetta",
-                    location: "Morano Osteria (PG)",
-                    coords: [42.984, 12.237],
-                    startDate: "2025-08-26",
-                    endDate: "2025-08-31",
-                    food: "Bruschetta",
-                    description: "44ª edizione su due livelli",
-                    url: "https://www.umbriaeventi.com/sagra-della-bruschetta-morano-osteria-8828.htm"
-                },
-                {
-                    name: "Sagra del Fagiolo",
-                    location: "Sutri (VT)",
-                    coords: [42.241, 12.227],
-                    startDate: "2025-08-29",
-                    endDate: "2025-08-31",
-                    food: "Fagiolo sutrino (fagiolo della regina)",
-                    description: "51ª edizione nel borgo su sperone tufaceo",
-                    url: "https://www.umbriaeventi.com/sagra-del-fagiolo-sutri-13483.htm"
-                },
-                {
-                    name: "Sagra della Scartocciatura",
-                    location: "San Martino in Campo (PG)",
-                    coords: [43.012, 12.382],
-                    startDate: "2025-08-29",
-                    endDate: "2025-09-07",
-                    food: "Scartocciatura delle pannocchie",
-                    description: "43ª edizione con mostre e serate danzanti",
-                    url: "https://www.umbriaeventi.com/sagra-della-scartocciatura-san-martino-in-campo-8052.htm"
-                },
-                {
-                    name: "Sagra della Porchetta",
-                    location: "Monte San Savino (AR)",
-                    coords: [43.331, 11.725],
-                    startDate: "2025-09-10",
-                    endDate: "2025-09-14",
-                    food: "Porchetta (detentrice Guinness dei Primati)",
-                    description: "61ª edizione nella città rinascimentale",
-                    url: "https://www.umbriaeventi.com/sagra-della-porchetta-monte-san-savino-14790.htm"
-                },
-                {
-                    name: "Sagra della Canaiola",
-                    location: "Pretola (PG)",
-                    coords: [43.063, 12.288],
-                    startDate: "2025-09-19",
-                    endDate: "2025-09-28",
-                    food: "Canaiola e piatti tradizionali umbri",
-                    description: "Torre medievale come location",
-                    url: "https://www.umbriaeventi.com/sagra-della-canaiola-pretola-8838.htm"
-                },
-                {
-                    name: "Sagra della Polenta",
-                    location: "Monterchi (AR)",
-                    coords: [43.485, 12.114],
-                    startDate: "2025-09-19",
-                    endDate: "2025-09-21",
-                    food: "Polenta e cucina tipica toscana",
-                    description: "50ª edizione di una delle sagre più longeve",
-                    url: "https://www.umbriaeventi.com/sagra-della-polenta-monterchi-10785.htm"
-                },
-                {
-                    name: "I Giorni di Bacco",
-                    location: "Castiglion Fiorentino (AR)",
-                    coords: [43.344, 11.919],
-                    startDate: "2025-09-19",
-                    endDate: "2025-09-28",
-                    food: "Vini e prodotti enogastronomici locali",
-                    description: "17ª edizione nei Giardini Pubblici",
-                    url: "https://www.umbriaeventi.com/i-giorni-di-bacco-castiglion-fiorentino-12031.htm"
-                },
-                {
-                    name: "Sagra della Castagna",
-                    location: "Morra (PG)",
-                    coords: [42.995, 12.134],
-                    startDate: "2025-10-17",
-                    endDate: "2025-10-19",
-                    food: "Castagne e prodotti autunnali",
-                    description: "50ª edizione della tradizionale sagra",
-                    url: "https://www.umbriaeventi.com/sagra-della-castagna-morra-4691.htm"
-                },
-                // Pagina 4 - Eventi passati ma con date per il 2025
-                {
-                    name: "Sagra del Fricò",
-                    location: "Caprara (PG)",
-                    coords: [43.053, 12.343],
-                    startDate: "2025-07-11",
-                    endDate: "2025-07-13",
-                    food: "Fricò (piatto tradizionale)",
-                    description: "Tradizionale appuntamento gastronomico e culturale",
-                    url: "https://www.umbriaeventi.com/sagra-del-frico-caprara-2776.htm"
-                },
-                {
-                    name: "Sagra della Tortuccia",
-                    location: "Castel Giorgio (TR)",
-                    coords: [42.707, 11.979],
-                    startDate: "2025-07-09",
-                    endDate: "2025-07-13",
-                    food: "Tortuccia (specialità locale)",
-                    description: "22ª edizione con musica dal vivo",
-                    url: "https://www.umbriaeventi.com/sagra-della-tortuccia-castel-giorgio-3172.htm"
-                },
-                {
-                    name: "Beercollando",
-                    location: "Casacastalda (PG)",
-                    coords: [43.203, 12.644],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-05",
-                    food: "Birra artigianale e cibo sfizioso",
-                    description: "7ª edizione del festival della birra",
-                    url: "https://www.umbriaeventi.com/beercollando-casacastalda-13245.htm"
-                },
-                {
-                    name: "Sagra della Frittella",
-                    location: "Pozzo (PG)",
-                    coords: [42.837, 12.544],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-06",
-                    food: "Frittelle dolci tradizionali",
-                    description: "43ª edizione tra gli ulivi",
-                    url: "https://www.umbriaeventi.com/sagra-della-frittella-pozzo-8549.htm"
-                },
-                {
-                    name: "Sagra della Torta al Testo",
-                    location: "Selvarelle (TR)",
-                    coords: [42.671, 12.601],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-06",
-                    food: "Torta al testo (focaccia di acqua e farina)",
-                    description: "Cotta su lastra infuocata",
-                    url: "https://www.umbriaeventi.com/sagra-della-torta-al-testo-selvarelle-13145.htm"
-                },
-                {
-                    name: "Sagra dei Maccaroni Canepinesi",
-                    location: "Canepina (VT)",
-                    coords: [42.381, 12.233],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-06",
-                    food: "Maccaroni canepinesi (fieno canepinese)",
-                    description: "12ª edizione della pasta sfoglia sottilissima",
-                    url: "https://www.umbriaeventi.com/sagra-dei-maccaroni-canepinesi-canepina-13494.htm"
-                },
-                {
-                    name: "Sagra del Cinghiale",
-                    location: "Soriano nel Cimino (VT)",
-                    coords: [42.419, 12.233],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-06",
-                    food: "Cinghiale in varie preparazioni",
-                    description: "16ª edizione della festa del cinghiale",
-                    url: "https://www.umbriaeventi.com/sagra-del-cinghiale-soriano-nel-cimino-15493.htm"
-                },
-                {
-                    name: "Taverna del Daino",
-                    location: "Castel dell'Aquila (TR)",
-                    coords: [42.545, 12.867],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Daino e maiale",
-                    description: "Eccezionali prelibatezze locali",
-                    url: "https://www.umbriaeventi.com/sagra-del-daino-e-del-maiale-castel-dell-aquila-4276.htm"
-                },
-                {
-                    name: "Sagra dei Frutti del Bosco",
-                    location: "Papiano (PG)",
-                    coords: [43.285, 12.433],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Frutti di bosco e torta al testo",
-                    description: "36ª edizione con tradizione contadina",
-                    url: "https://www.umbriaeventi.com/sagra-dei-frutti-del-bosco-e-mirtillo-papiano-5729.htm"
-                },
-                {
-                    name: "Sagra della Granocchia",
-                    location: "Capanne (PG)",
-                    coords: [42.955, 12.387],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Granocchia e piatti tipici locali",
-                    description: "46ª edizione dal 1978",
-                    url: "https://www.umbriaeventi.com/sagra-della-granocchia-capanne-8035.htm"
-                },
-                {
-                    name: "Sagra del Pesce Sfilettato",
-                    location: "Sant'Arcangelo (PG)",
-                    coords: [43.153, 12.141],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Pesce sfilettato del Lago Trasimeno",
-                    description: "40ª edizione della tradizione lacustre",
-                    url: "https://www.umbriaeventi.com/sagra-del-pesce-sfilettato-sant-arcangelo-8140.htm"
-                },
-                {
-                    name: "Sagra del Tartufo",
-                    location: "Ripa (PG)",
-                    coords: [43.067, 12.321],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Tartufo e piatti della tradizione",
-                    description: "37ª edizione dell'appuntamento estivo",
-                    url: "https://www.umbriaeventi.com/sagra-del-tartufo-ripa-8169.htm"
-                },
-                {
-                    name: "Badiola nel Verde - Sagra del Baccalà",
-                    location: "Badiola (PG)",
-                    coords: [43.086, 12.465],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Baccalà alla perugina",
-                    description: "32ª edizione con divertimento e musica",
-                    url: "https://www.umbriaeventi.com/badiola-nel-verde-sagra-del-baccala-alla-perugina-badiola-8493.htm"
-                },
-                {
-                    name: "Sagra della Pappardella",
-                    location: "Finocchieto (TR)",
-                    coords: [42.512, 12.685],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Pappardelle fresche fatte a mano",
-                    description: "19ª edizione del festival della pappardella",
-                    url: "https://www.umbriaeventi.com/sagra-della-pappardella-finocchieto-stroncone-11859.htm"
-                },
-                {
-                    name: "Sagra della Fregnaccia",
-                    location: "Montecampano (TR)",
-                    coords: [42.583, 12.469],
-                    startDate: "2025-07-04",
-                    endDate: "2025-07-13",
-                    food: "Fregnaccia con erbe spontanee",
-                    description: "Piatto povero di origine contadina",
-                    url: "https://www.umbriaeventi.com/sagra-della-fregnaccia-montecampano-5709.htm"
-                },
-                {
-                    name: "Trebbiatura di Cannaiola",
-                    location: "Cannaiola (PG)",
-                    coords: [42.868, 12.451],
-                    startDate: "2025-07-03",
-                    endDate: "2025-07-13",
-                    food: "Cucina tradizionale contadina",
-                    description: "35ª edizione rievocazione storica",
-                    url: "https://www.umbriaeventi.com/rievocazione-storica-della-trebbiatura-cannaiola-1305.htm"
-                },
-                {
-                    name: "Sagra della Lumaca",
-                    location: "Moiano (PG)",
-                    coords: [43.045, 12.607],
-                    startDate: "2025-07-03",
-                    endDate: "2025-07-06",
-                    food: "Lumache della tradizione contadina",
-                    description: "12ª edizione del cibo povero ma gustoso",
-                    url: "https://www.umbriaeventi.com/sagra-della-lumaca-moiano-8968.htm"
-                },
-                {
-                    name: "Sagra del Cacciucco",
-                    location: "Renzino (AR)",
-                    coords: [43.355, 11.823],
-                    startDate: "2025-07-02",
-                    endDate: "2025-07-06",
-                    food: "Cacciucco e specialità di pesce",
-                    description: "Specialità toscane nell'area sportiva",
-                    url: "https://www.umbriaeventi.com/sagra-del-cacciucco-foiano-della-chiana-13968.htm"
-                }
-            ];
+        // App state
+        const app = {
+            map: null,
+            markers: [],
+            markerCluster: null,
+            userMarker: null,
+            userLocation: null,
+            currentView: 'map',
+            favorites: JSON.parse(localStorage.getItem('sagre-favorites') || '[]'),
+            filters: {
+                search: '',
+                categories: [],
+                dateFrom: null,
+                dateTo: null
+            },
+            sagre: []
+        };
 
-            // Inizializza la mappa
-            let map = L.map('map').setView([42.9, 12.4], 8);
+        // Sagre data (same as original)
+        app.sagre = [
+            // Pagina 1
+            { name: "Collesanto Antria in Gastronomia", location: "Antria (PG)", coords: [43.139, 12.251], startDate: "2025-07-11", endDate: "2025-07-20", food: "Oca in porchetta, piatti tipici della tradizione contadina", description: "38ª edizione nel castello medievale di Antria", url: "https://www.umbriaeventi.com/collesanto-antria-in-gastronomia-sagra-dell-oca-antria-8460.htm", category: "carne" },
+            { name: "Sagra del Brustico e del Prosciutto e Melone", location: "Villastrada (PG)", coords: [43.025, 12.089], startDate: "2025-07-16", endDate: "2025-07-20", food: "Brustico, prosciutto e melone", description: "33ª edizione presso il Club Sportivo Villastrada", url: "https://www.umbriaeventi.com/sagra-del-brustico-e-del-prosciutto-e-melone-villastrada-8788.htm", category: "carne" },
+            { name: "Sagra dei Bringoli", location: "Lisciano Niccone (PG)", coords: [43.245, 12.095], startDate: "2025-07-17", endDate: "2025-07-20", food: "Bringoli (spaghetti di grandi dimensioni)", description: "48ª edizione con musica e ottima cucina", url: "https://www.umbriaeventi.com/sagra-dei-bringoli-lisciano-niccone-8374.htm", category: "pasta" },
+            { name: "Sagra degli Arrosticini", location: "Guardea (TR)", coords: [42.625, 12.295], startDate: "2025-07-18", endDate: "2025-07-27", food: "Arrosticini di carne", description: "8ª edizione presso Piazza Panfili", url: "https://www.umbriaeventi.com/festa-degli-arrosticini-guardea-terni-13308.htm", category: "carne" },
+            { name: "Sagra della Pecora", location: "Civita Castellana (VT)", coords: [42.293, 12.414], startDate: "2025-07-18", endDate: "2025-07-20", food: "Piatti a base di pecora", description: "14ª edizione con musica e spettacoli", url: "https://www.umbriaeventi.com/sagra-della-pecora-fabrica-di-roma-13391.htm", category: "carne" },
+            { name: "Sagra del Buon Mangiare", location: "Villa San Faustino (PG)", coords: [42.776, 12.669], startDate: "2025-07-18", endDate: "2025-07-27", food: "Cucina tradizionale locale", description: "37ª edizione nel borgo storico", url: "https://www.umbriaeventi.com/sagra-del-buon-mangiare-villa-san-faustino-8138.htm", category: "altro" },
+            { name: "Castellonando", location: "Castellonalto (TR)", coords: [42.521, 12.771], startDate: "2025-07-18", endDate: "2025-07-27", food: "Percorso enogastronomico con 5 postazioni", description: "17ª edizione nel borgo a 664m slm", url: "https://www.umbriaeventi.com/feste_paesane_castellonando_2014_castellonalto_8426.htm", category: "altro" },
+            { name: "Sagra del Baccalà", location: "Bomarzo (VT)", coords: [42.485, 12.249], startDate: "2025-07-18", endDate: "2025-08-03", food: "Baccalà in varie declinazioni", description: "13ª edizione per riscoprire i sapori di una volta", url: "https://www.umbriaeventi.com/sagra-del-baccala-bomarzo-12634.htm", category: "pesce" },
+            { name: "Sagra dell'Oca", location: "Castel Cellesi (VT)", coords: [42.445, 12.302], startDate: "2025-07-23", endDate: "2025-07-27", food: "Piatti a base di oca", description: "2ª edizione con musica dal vivo", url: "https://www.umbriaeventi.com/sagra-dell-oca-castel-cellesi-15585.htm", category: "carne" },
+            { name: "In Piazza Sotto le Stelle", location: "Deruta (PG)", coords: [42.981, 12.419], startDate: "2025-07-24", endDate: "2025-08-02", food: "Vari piatti della tradizione", description: "Musica, ceramica e cultura in Piazza dei Consoli", url: "https://www.umbriaeventi.com/in-piazza-sotto-le-stelle-deruta-10262.htm", category: "altro" },
+            { name: "Settimana Gastronomica - Sagra dell'Oca Arrosto", location: "Torchiagina (PG)", coords: [43.025, 12.613], startDate: "2025-07-25", endDate: "2025-08-03", food: "Oca arrosto e cucina tipica", description: "53ª edizione con serate danzanti", url: "https://www.umbriaeventi.com/settimana-gastronomica-torchiaginese-sagra-dell-oca-arrosto-torchiagina-8472.htm", category: "carne" },
+            { name: "Sagra del Piccione", location: "Montecchio di Cortona (AR)", coords: [43.194, 11.987], startDate: "2025-07-25", endDate: "2025-08-03", food: "Piccione al girarrosto sulla brace", description: "50ª edizione presso il Campo Sportivo", url: "https://www.umbriaeventi.com/sagra-del-piccione-montecchio-di-cortona-13910.htm", category: "carne" },
+            { name: "Sagra della Pizza al Forno", location: "Ponte San Lorenzo di Narni (TR)", coords: [42.507, 12.511], startDate: "2025-07-25", endDate: "2025-08-03", food: "Pizza al forno", description: "10 serate con musica live e area bimbi", url: "https://www.umbriaeventi.com/sagra-della-pizza-al-forno-ponte-san-lorenzo-di-narni-8871.htm", category: "altro" },
+            { name: "Sagra dell'Oca", location: "Bettona (PG)", coords: [43.011, 12.485], startDate: "2025-07-25", endDate: "2025-08-03", food: "Ricette tradizionali a base di oca", description: "41ª edizione presso i Giardini di Santa Caterina", url: "https://www.umbriaeventi.com/sagra-dell-oca-bettona-8643.htm", category: "carne" },
+            { name: "Sagra del Berlingozzo", location: "Pitigliano (PG)", coords: [42.852, 12.106], startDate: "2025-07-25", endDate: "2025-07-27", food: "Berlingozzo (ciambella all'anice)", description: "48ª edizione della festa tradizionale", url: "https://www.umbriaeventi.com/sagra-del-berlingozzo-pitigliano-8681.htm", category: "dolci" },
+            { name: "Sagra de u Cecu Maritu", location: "Aguzzo (TR)", coords: [42.485, 12.667], startDate: "2025-07-25", endDate: "2025-08-03", food: "Cecu Maritu (focaccia farcita con erbe)", description: "13ª edizione con storia curiosa sul nome", url: "https://www.umbriaeventi.com/sagra-de-u-cecu-maritu-aguzzo-8205.htm", category: "altro" },
+            { name: "Serate Medievali", location: "Itieli (TR)", coords: [42.627, 12.544], startDate: "2025-07-25", endDate: "2025-07-26", food: "Cucina medievale", description: "Rievocazioni storiche nel castello", url: "https://www.umbriaeventi.com/serate-medievali-itieli-10590.htm", category: "altro" },
+            // Remaining data from original...
+            { name: "Note di Luppolo", location: "San Martino al Cimino (VT)", coords: [42.370, 12.173], startDate: "2025-07-25", endDate: "2025-07-27", food: "Birra artigianale e street food", description: "8ª edizione dedicata alla birra artigianale", url: "https://www.umbriaeventi.com/note-di-luppolo-san-martino-al-cimino-12777.htm", category: "altro" },
+            { name: "Sagra della Patata", location: "Giacconale (PG)", coords: [43.362, 12.734], startDate: "2025-07-26", endDate: "2025-07-27", food: "Piatti a base di patate", description: "1ª edizione con chef campani", url: "https://www.umbriaeventi.com/sagra-della-patata-sigillo-15868.htm", category: "verdure" },
+            { name: "Ferragosto Toreggiano", location: "Tuoro sul Trasimeno (PG)", coords: [43.212, 12.077], startDate: "2025-08-01", endDate: "2025-08-15", food: "Piatti prelibati della tradizione", description: "Rievocazioni storiche e cena storica romana", url: "https://www.umbriaeventi.com/ferragosto-toreggiano-tuoro-sul-trasimeno-8383.htm", category: "altro" },
+            { name: "Sagra della Lumaca", location: "Cancelli (AN)", coords: [43.472, 12.904], startDate: "2025-07-31", endDate: "2025-08-03", food: "Lumache", description: "41ª edizione in località storica", url: "https://www.umbriaeventi.com/sagra-della-lumaca-cancelli-11643.htm", category: "carne" },
+            { name: "Sagra del Cavatello", location: "Vitorchiano (VT)", coords: [42.468, 12.174], startDate: "2025-07-31", endDate: "2025-08-03", food: "Cavatello (pasta fresca tipica)", description: "44ª edizione nel borgo medievale", url: "https://www.umbriaeventi.com/sagra-del-cavatello-vitorchiano-14069.htm", category: "pasta" },
+            { name: "Sagra degli Gnocchi", location: "Guardea (TR)", coords: [42.625, 12.295], startDate: "2025-08-01", endDate: "2025-08-10", food: "Gnocchi", description: "35ª edizione, uno degli appuntamenti più attesi", url: "https://www.umbriaeventi.com/sagra-degli-gnocchi-guardea-8012.htm", category: "pasta" },
+            { name: "Sagra della Torta al Testo", location: "Sant'Egidio (PG)", coords: [43.071, 12.430], startDate: "2025-08-01", endDate: "2025-08-10", food: "Torta al testo cotta sotto la cenere", description: "52ª edizione dell'appuntamento estivo", url: "https://www.umbriaeventi.com/sagra-della-torta-al-testo-sant-egidio-8136.htm", category: "altro" },
+            { name: "Sagra dello Gnocco", location: "Pieve di Compresseto (PG)", coords: [43.025, 12.567], startDate: "2025-08-01", endDate: "2025-08-03", food: "Gnocchi fatti a mano", description: "32ª edizione con partecipazione di tutto il paese", url: "https://www.umbriaeventi.com/sagra-dello-gnocco-pieve-di-compresseto-9060.htm", category: "pasta" },
+            { name: "Vinotricolando", location: "Otricoli (TR)", coords: [42.419, 12.482], startDate: "2025-08-01", endDate: "2025-08-03", food: "Vino e gastronomia del territorio", description: "Viaggio enogastronomico nei vicoli nascosti", url: "https://www.umbriaeventi.com/vinotricolando-otricoli-8867.htm", category: "vino" },
+            { name: "Ferragosto a Quadrelli - Sagra della Rana Fritta", location: "Quadrelli (TR)", coords: [42.748, 12.394], startDate: "2025-08-06", endDate: "2025-08-15", food: "Rana fritta e piatti tradizionali", description: "Festa dell'Assunta con tradizioni secolari", url: "https://www.umbriaeventi.com/ferragosto-a-quadrelli-sagra-rana-fritta-8142.htm", category: "carne" },
+            { name: "Sagra della Porchetta e dei Fagioli con le Cotiche", location: "Monte Santa Maria Tiberina (PG)", coords: [43.433, 12.127], startDate: "2025-08-07", endDate: "2025-08-10", food: "Porchetta e fagioli con le cotiche", description: "31ª edizione nel borgo medievale", url: "https://www.umbriaeventi.com/sagra-della-porchetta-e-dei-fagioli-con-le-cotiche-monte-santa-maria-tiberina-8688.htm", category: "carne" },
+            { name: "Sagra della Tagliatella Casareccia", location: "Lisciano Niccone (PG)", coords: [43.245, 12.095], startDate: "2025-08-08", endDate: "2025-08-17", food: "Tagliatella casareccia", description: "49ª edizione nella Val di Pierle", url: "https://www.umbriaeventi.com/sagra-della-tagliatella-casareccia-lisciano-niccone-10716.htm", category: "pasta" },
+            { name: "Aperissima", location: "Capocavallo (PG)", coords: [43.069, 12.359], startDate: "2025-08-08", endDate: "2025-08-17", food: "Sangria, stinco e menù ricco", description: "50 anni della Pro Loco Aper90", url: "https://www.umbriaeventi.com/aperissima-sagra-della-sangria-e-dello-stinco-capocavallo-6377.htm", category: "carne" },
+            { name: "Sagra del Fungo", location: "Pianello (PG)", coords: [43.105, 12.467], startDate: "2025-08-08", endDate: "2025-08-17", food: "Funghi e piatti della tradizione", description: "45ª edizione con musica e ottima cucina", url: "https://www.umbriaeventi.com/sagra-del-fungo-pianello-8413.htm", category: "verdure" },
+            { name: "Sagra della Cannelletta", location: "Castel Viscardo (TR)", coords: [42.758, 12.003], startDate: "2025-08-09", endDate: "2025-08-18", food: "Cannelletta e prodotti locali", description: "57ª edizione con tradizione enogastronomica", url: "https://www.umbriaeventi.com/sagra-della-cannelletta-castel-viscardo-8988.htm", category: "altro" }
+        ];
+
+        // Town coordinates
+        const townCoordinates = {
+            'todi': [42.781, 12.407],
+            'perugia': [43.110, 12.390],
+            'assisi': [43.070, 12.620],
+            'spoleto': [42.740, 12.740],
+            'terni': [42.563, 12.643],
+            'orvieto': [42.719, 12.110],
+            'gubbio': [43.351, 12.577],
+            'foligno': [42.956, 12.703],
+            'città di castello': [43.456, 12.238],
+            'citta di castello': [43.456, 12.238],
+            'narni': [42.517, 12.516],
+            'amelia': [42.556, 12.413],
+            'spello': [42.990, 12.670],
+            'bevagna': [42.932, 12.609],
+            'montefalco': [42.892, 12.650],
+            'norcia': [42.793, 13.093],
+            'castiglione del lago': [43.126, 12.055],
+            'marsciano': [42.909, 12.337],
+            'umbertide': [43.305, 12.330],
+            'bastia umbra': [43.068, 12.549],
+            'corciano': [43.128, 12.301],
+            'cortona': [43.275, 11.988],
+            'arezzo': [43.463, 11.880],
+            'viterbo': [42.420, 12.108],
+            'roma': [41.902, 12.496],
+            'siena': [43.318, 11.331],
+            'firenze': [43.769, 11.256],
+            'florence': [43.769, 11.256],
+            'rieti': [42.404, 12.856]
+        };
+
+        // Initialize map
+        function initMap() {
+            app.map = L.map('map').setView([42.9, 12.4], 8);
             
-            // Aggiungi il layer della mappa
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+            }).addTo(app.map);
+
+            // Initialize marker cluster group
+            app.markerCluster = L.markerClusterGroup({
+                chunkedLoading: true,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                maxClusterRadius: 50
+            });
+
+            createMarkers();
+            app.map.addLayer(app.markerCluster);
+        }
+
+        // Create markers with custom icons
+        function createMarkers() {
+            const today = new Date();
             
-            // Array per memorizzare tutti i marker
-            let markers = [];
-            let userMarker = null;
-            let userLocation = null;
-            
-            // Coordinate approssimative di città italiane comuni
-            const townCoordinates = {
-                // Umbria
-                'todi': [42.781, 12.407],
-                'perugia': [43.110, 12.390],
-                'assisi': [43.070, 12.620],
-                'spoleto': [42.740, 12.740],
-                'terni': [42.563, 12.643],
-                'orvieto': [42.719, 12.110],
-                'gubbio': [43.351, 12.577],
-                'foligno': [42.956, 12.703],
-                'città di castello': [43.456, 12.238],
-                'citta di castello': [43.456, 12.238],
-                'narni': [42.517, 12.516],
-                'amelia': [42.556, 12.413],
-                'spello': [42.990, 12.670],
-                'bevagna': [42.932, 12.609],
-                'montefalco': [42.892, 12.650],
-                'norcia': [42.793, 13.093],
-                'castiglione del lago': [43.126, 12.055],
-                'marsciano': [42.909, 12.337],
-                'umbertide': [43.305, 12.330],
-                'bastia umbra': [43.068, 12.549],
-                'corciano': [43.128, 12.301],
-                // Nearby regions
-                'cortona': [43.275, 11.988],
-                'arezzo': [43.463, 11.880],
-                'viterbo': [42.420, 12.108],
-                'roma': [41.902, 12.496],
-                'siena': [43.318, 11.331],
-                'firenze': [43.769, 11.256],
-                'florence': [43.769, 11.256],
-                'rieti': [42.404, 12.856]
+            app.sagre.forEach(sagra => {
+                const startDate = new Date(sagra.startDate);
+                const endDate = new Date(sagra.endDate);
+                const isActive = today >= startDate && today <= endDate;
+                const isPast = today > endDate;
+                
+                // Custom icon based on status
+                const iconHtml = `
+                    <div style="
+                        background: ${isPast ? '#9ca3af' : isActive ? '#10b981' : '#6366f1'};
+                        width: 30px;
+                        height: 30px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 16px;
+                    ">
+                        ${getCategoryEmoji(sagra.category)}
+                    </div>
+                `;
+                
+                const customIcon = L.divIcon({
+                    html: iconHtml,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30],
+                    popupAnchor: [0, -30],
+                    className: 'custom-marker'
+                });
+
+                const marker = L.marker(sagra.coords, { icon: customIcon })
+                    .bindPopup(createPopupContent(sagra));
+                
+                marker.sagraData = sagra;
+                app.markers.push(marker);
+                app.markerCluster.addLayer(marker);
+            });
+        }
+
+        // Get category emoji
+        function getCategoryEmoji(category) {
+            const emojis = {
+                pasta: '🍝',
+                carne: '🥩',
+                pesce: '🐟',
+                dolci: '🍰',
+                verdure: '🥗',
+                formaggi: '🧀',
+                vino: '🍷',
+                altro: '🍽️'
             };
+            return emojis[category] || '🍽️';
+        }
+
+        // Create popup content
+        function createPopupContent(sagra) {
+            const isFavorite = app.favorites.includes(sagra.name);
+            const distance = app.userLocation ? 
+                calculateDistance(app.userLocation[0], app.userLocation[1], sagra.coords[0], sagra.coords[1]) : null;
             
-            // Funzione per toggle dei filtri su mobile
-            window.toggleFilters = function() {
-                const controls = document.getElementById('filterControls');
-                controls.classList.toggle('active');
+            return `
+                <div class="popup-header">
+                    <h3>${sagra.name}</h3>
+                    <div class="popup-location">📍 ${sagra.location}</div>
+                </div>
+                <div class="popup-body">
+                    <div class="popup-meta">
+                        <div class="popup-meta-item">
+                            📅 ${formatDate(sagra.startDate)} - ${formatDate(sagra.endDate)}
+                        </div>
+                        <div class="popup-meta-item" style="color: var(--success);">
+                            🍽️ ${sagra.food}
+                        </div>
+                        ${distance ? `
+                            <div class="popup-meta-item">
+                                📏 ${distance.toFixed(1)} km dalla tua posizione
+                            </div>
+                        ` : ''}
+                        <div class="popup-meta-item">
+                            📝 ${sagra.description}
+                        </div>
+                    </div>
+                    <div class="popup-actions">
+                        <button class="btn btn-secondary" onclick="toggleFavorite('${sagra.name}')">
+                            ${isFavorite ? '💔 Rimuovi' : '❤️ Preferiti'}
+                        </button>
+                        <a href="${sagra.url}" target="_blank" class="btn btn-primary">
+                            🔗 Info
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const options = { day: 'numeric', month: 'short' };
+            return date.toLocaleDateString('it-IT', options);
+        }
+
+        // Calculate distance
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Show view (map/list/favorites)
+        function showView(view) {
+            app.currentView = view;
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            if (view === 'map') {
+                document.getElementById('navMap').classList.add('active');
+                document.getElementById('map').style.display = 'block';
+                document.getElementById('listView').classList.remove('active');
+                setTimeout(() => app.map.invalidateSize(), 100);
+            } else if (view === 'list') {
+                document.getElementById('navList').classList.add('active');
+                document.getElementById('map').style.display = 'none';
+                document.getElementById('listView').classList.add('active');
+                updateListView();
+            } else if (view === 'favorites') {
+                document.getElementById('navFavorites').classList.add('active');
+                document.getElementById('map').style.display = 'none';
+                document.getElementById('listView').classList.add('active');
+                updateListView(true);
+            }
+        }
+
+        // Update list view
+        function updateListView(favoritesOnly = false) {
+            const listContent = document.getElementById('listContent');
+            let sagre = app.sagre;
+            
+            // Filter by favorites if needed
+            if (favoritesOnly) {
+                sagre = sagre.filter(s => app.favorites.includes(s.name));
             }
             
-            // Funzione per usare la posizione GPS corrente
-            window.useCurrentLocation = function() {
-                if (!navigator.geolocation) {
-                    alert('La geolocalizzazione non è supportata dal tuo browser');
-                    return;
-                }
+            // Apply other filters
+            sagre = applyFiltersToSagre(sagre);
+            
+            // Sort by date or distance
+            if (app.userLocation) {
+                sagre.sort((a, b) => {
+                    const distA = calculateDistance(app.userLocation[0], app.userLocation[1], a.coords[0], a.coords[1]);
+                    const distB = calculateDistance(app.userLocation[0], app.userLocation[1], b.coords[0], b.coords[1]);
+                    return distA - distB;
+                });
+            } else {
+                sagre.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+            }
+            
+            // Generate HTML
+            if (sagre.length === 0) {
+                listContent.innerHTML = `
+                    <div class="no-results">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        <p>${favoritesOnly ? 'Nessun preferito salvato' : 'Nessuna sagra trovata'}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            listContent.innerHTML = sagre.map(sagra => {
+                const isFavorite = app.favorites.includes(sagra.name);
+                const distance = app.userLocation ? 
+                    calculateDistance(app.userLocation[0], app.userLocation[1], sagra.coords[0], sagra.coords[1]) : null;
                 
-                // Mostra messaggio di caricamento
-                document.getElementById('statsText').textContent = '📡 Rilevamento posizione GPS...';
-                
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        // Rimuovi il marker precedente se esiste
-                        if (userMarker) {
-                            map.removeLayer(userMarker);
-                        }
-                        
-                        // Crea un'icona personalizzata per l'utente
-                        const userIcon = L.divIcon({
-                            html: '<div style="background-color: #e74c3c; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
-                            iconSize: [30, 30],
-                            iconAnchor: [15, 15]
-                        });
-                        
-                        // Aggiungi il nuovo marker
-                        userMarker = L.marker([lat, lng], {icon: userIcon})
-                            .bindPopup('<strong>La tua posizione GPS</strong>')
-                            .addTo(map);
-                        
-                        userLocation = [lat, lng];
-                        
-                        // Centra la mappa sulla posizione dell'utente
-                        map.setView([lat, lng], 10);
-                        
-                        // Aggiorna il campo di testo
-                        document.getElementById('myLocation').value = 'Posizione GPS';
-                        
-                        // Calcola e mostra le distanze
-                        showDistances();
-                        
-                        document.getElementById('statsText').textContent = '📍 Posizione GPS rilevata';
-                    },
-                    function(error) {
-                        let errorMessage = 'Errore nel rilevamento della posizione: ';
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                errorMessage += 'Permesso negato. Abilita la geolocalizzazione nelle impostazioni.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errorMessage += 'Posizione non disponibile.';
-                                break;
-                            case error.TIMEOUT:
-                                errorMessage += 'Timeout nella richiesta.';
-                                break;
-                            default:
-                                errorMessage += 'Errore sconosciuto.';
-                        }
-                        alert(errorMessage);
-                        updateStats();
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
+                return `
+                    <div class="list-card ${isFavorite ? 'favorite' : ''}" onclick="focusOnSagra(${sagra.coords[0]}, ${sagra.coords[1]})">
+                        <div class="list-card-header">
+                            <div>
+                                <h3>${sagra.name}</h3>
+                                <div class="list-card-meta">
+                                    <span>📍 ${sagra.location}</span>
+                                    <span>📅 ${formatDate(sagra.startDate)} - ${formatDate(sagra.endDate)}</span>
+                                    ${distance ? `<span>📏 ${distance.toFixed(1)} km</span>` : ''}
+                                </div>
+                                <div class="list-card-food">${getCategoryEmoji(sagra.category)} ${sagra.food}</div>
+                            </div>
+                            <button class="favorite-button ${isFavorite ? 'active' : ''}" 
+                                    onclick="event.stopPropagation(); toggleFavorite('${sagra.name}')">
+                                ${isFavorite ? '❤️' : '🤍'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Apply filters to sagre
+        function applyFiltersToSagre(sagre) {
+            let filtered = sagre;
+            
+            // Search filter
+            if (app.filters.search) {
+                const search = app.filters.search.toLowerCase();
+                filtered = filtered.filter(s => 
+                    s.name.toLowerCase().includes(search) ||
+                    s.location.toLowerCase().includes(search) ||
+                    s.food.toLowerCase().includes(search)
                 );
             }
             
-            // Funzione per impostare la posizione dell'utente
-            window.setMyLocation = function() {
-                const locationInput = document.getElementById('myLocation').value.toLowerCase().trim();
-                
-                if (!locationInput) {
-                    alert('Inserisci il nome di una città');
-                    return;
-                }
-                
-                const coords = townCoordinates[locationInput];
-                
-                if (!coords) {
-                    alert(`Non riesco a trovare "${locationInput}". Prova con una città più grande come Todi, Perugia, Assisi, Spoleto, Terni, ecc.`);
-                    return;
-                }
-                
-                // Rimuovi il marker precedente se esiste
-                if (userMarker) {
-                    map.removeLayer(userMarker);
-                }
-                
-                // Crea un'icona personalizzata per l'utente
-                const userIcon = L.divIcon({
-                    html: '<div style="background-color: #e74c3c; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 15]
-                });
-                
-                // Aggiungi il nuovo marker
-                userMarker = L.marker(coords, {icon: userIcon})
-                    .bindPopup(`<strong>La tua posizione: ${locationInput.charAt(0).toUpperCase() + locationInput.slice(1)}</strong>`)
-                    .addTo(map);
-                
-                userLocation = coords;
-                
-                // Centra la mappa sulla posizione dell'utente
-                map.setView(coords, 10);
-                
-                // Calcola e mostra le distanze
-                showDistances();
+            // Category filter
+            if (app.filters.categories.length > 0) {
+                filtered = filtered.filter(s => app.filters.categories.includes(s.category));
             }
             
-            // Funzione per calcolare la distanza tra due punti (formula di Haversine)
-            function calculateDistance(lat1, lon1, lat2, lon2) {
-                const R = 6371; // Raggio della Terra in km
-                const dLat = (lat2 - lat1) * Math.PI / 180;
-                const dLon = (lon2 - lon1) * Math.PI / 180;
-                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                          Math.sin(dLon/2) * Math.sin(dLon/2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                return R * c;
-            }
-            
-            // Funzione per mostrare le sagre ordinate per distanza
-            function showDistances() {
-                if (!userLocation) return;
-                
-                // Calcola le distanze per tutte le sagre visibili
-                const sagreWithDistance = [];
-                markers.forEach(marker => {
-                    if (map.hasLayer(marker)) {
-                        const sagra = marker.sagraData;
-                        const distance = calculateDistance(
-                            userLocation[0], userLocation[1],
-                            sagra.coords[0], sagra.coords[1]
-                        );
-                        sagreWithDistance.push({
-                            sagra: sagra,
-                            distance: distance,
-                            marker: marker
-                        });
+            // Date filter
+            if (app.filters.dateFrom || app.filters.dateTo) {
+                filtered = filtered.filter(s => {
+                    const startDate = new Date(s.startDate);
+                    const endDate = new Date(s.endDate);
+                    
+                    if (app.filters.dateFrom && app.filters.dateTo) {
+                        const filterFrom = new Date(app.filters.dateFrom);
+                        const filterTo = new Date(app.filters.dateTo);
+                        return (startDate >= filterFrom && startDate <= filterTo) ||
+                               (endDate >= filterFrom && endDate <= filterTo) ||
+                               (startDate <= filterFrom && endDate >= filterTo);
+                    } else if (app.filters.dateFrom) {
+                        const filterFrom = new Date(app.filters.dateFrom);
+                        return endDate >= filterFrom;
+                    } else if (app.filters.dateTo) {
+                        const filterTo = new Date(app.filters.dateTo);
+                        return startDate <= filterTo;
                     }
                 });
-                
-                // Ordina per distanza
-                sagreWithDistance.sort((a, b) => a.distance - b.distance);
-                
-                // Crea l'HTML per la lista
-                let html = '';
-                sagreWithDistance.forEach(item => {
-                    html += `
-                        <div class="distance-item" onclick="focusOnSagra(${item.sagra.coords[0]}, ${item.sagra.coords[1]})">
-                            <div class="name">${item.sagra.name}</div>
-                            <div class="info">
-                                📍 ${item.sagra.location} - 
-                                <span class="distance">${item.distance.toFixed(1)} km</span> - 
-                                📅 ${formatDate(item.sagra.startDate)} - ${formatDate(item.sagra.endDate)}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                document.getElementById('distanceContent').innerHTML = html;
-                document.getElementById('distanceList').style.display = 'block';
             }
             
-            // Funzione per centrare la mappa su una sagra specifica
-            window.focusOnSagra = function(lat, lng) {
-                map.setView([lat, lng], 12);
-                
-                // Trova e apri il popup del marker
-                markers.forEach(marker => {
-                    if (marker.sagraData.coords[0] === lat && marker.sagraData.coords[1] === lng) {
+            return filtered;
+        }
+
+        // Focus on sagra
+        function focusOnSagra(lat, lng) {
+            showView('map');
+            app.map.setView([lat, lng], 14);
+            
+            // Find and open popup
+            app.markers.forEach(marker => {
+                if (marker.sagraData.coords[0] === lat && marker.sagraData.coords[1] === lng) {
+                    app.markerCluster.zoomToShowLayer(marker, () => {
                         marker.openPopup();
-                    }
-                });
-            }
-            
-            // Funzione per creare i marker
-            function createMarkers() {
-                sagre.forEach(sagra => {
-                    const marker = L.marker(sagra.coords)
-                        .bindPopup(createPopupContent(sagra));
-                    marker.sagraData = sagra;
-                    markers.push(marker);
-                    marker.addTo(map);
-                });
-                updateStats();
-            }
-            
-            // Funzione per creare il contenuto del popup
-            function createPopupContent(sagra) {
-                return `
-                    <div class="popup-content">
-                        <h3>${sagra.name}</h3>
-                        <p><strong>📍 Località:</strong> ${sagra.location}</p>
-                        <p class="date">📅 Date: ${formatDate(sagra.startDate)} - ${formatDate(sagra.endDate)}</p>
-                        <p class="food">🍽️ Specialità: ${sagra.food}</p>
-                        <p>📝 ${sagra.description}</p>
-                        <p><a href="${sagra.url}" target="_blank">🔗 Maggiori informazioni</a></p>
-                    </div>
-                `;
-            }
-            
-            // Funzione per formattare le date
-            function formatDate(dateString) {
-                const date = new Date(dateString);
-                const options = { day: 'numeric', month: 'short' };
-                return date.toLocaleDateString('it-IT', options);
-            }
-            
-            // Funzione per filtrare per testo
-            window.filterByText = function() {
-                const searchText = document.getElementById('textFilter').value.toLowerCase();
-                
-                if (!searchText) {
-                    showAll();
-                    return;
+                    });
                 }
-                
-                let visibleCount = 0;
-                markers.forEach(marker => {
-                    const sagra = marker.sagraData;
-                    const nameMatch = sagra.name.toLowerCase().includes(searchText);
-                    const locationMatch = sagra.location.toLowerCase().includes(searchText);
-                    const foodMatch = sagra.food.toLowerCase().includes(searchText);
-                    
-                    if (nameMatch || locationMatch || foodMatch) {
-                        marker.addTo(map);
-                        visibleCount++;
-                    } else {
-                        map.removeLayer(marker);
-                    }
-                });
-                
-                document.getElementById('statsText').textContent = 
-                    `Trovate ${visibleCount} sagre che contengono "${searchText}"`;
-                
-                // Aggiorna le distanze se c'è una posizione utente
-                if (userLocation) {
-                    showDistances();
-                }
+            });
+        }
+
+        // Toggle favorite
+        function toggleFavorite(sagraName) {
+            const index = app.favorites.indexOf(sagraName);
+            if (index > -1) {
+                app.favorites.splice(index, 1);
+                showToast('Rimosso dai preferiti');
+            } else {
+                app.favorites.push(sagraName);
+                showToast('Aggiunto ai preferiti');
             }
             
-            // Funzione per filtrare per data
-            window.filterByDate = function() {
-                const selectedDate = document.getElementById('dateFilter').value;
-                if (!selectedDate) {
-                    alert('Seleziona una data per filtrare');
-                    return;
-                }
-                
-                let visibleCount = 0;
-                markers.forEach(marker => {
-                    const sagra = marker.sagraData;
-                    const filterDate = new Date(selectedDate);
-                    const startDate = new Date(sagra.startDate);
-                    const endDate = new Date(sagra.endDate);
-                    
-                    if (filterDate >= startDate && filterDate <= endDate) {
-                        marker.addTo(map);
-                        visibleCount++;
-                    } else {
-                        map.removeLayer(marker);
-                    }
-                });
-                
-                document.getElementById('statsText').textContent = 
-                    `Trovate ${visibleCount} sagre attive il ${formatDate(selectedDate)}`;
-                
-                // Aggiorna le distanze se c'è una posizione utente
-                if (userLocation) {
-                    showDistances();
-                }
+            localStorage.setItem('sagre-favorites', JSON.stringify(app.favorites));
+            updateFavoritesCount();
+            
+            // Refresh current view
+            if (app.currentView === 'list' || app.currentView === 'favorites') {
+                updateListView(app.currentView === 'favorites');
             }
             
-            // Funzione per mostrare tutte le sagre
-            window.showAll = function() {
-                markers.forEach(marker => {
-                    marker.addTo(map);
-                });
-                document.getElementById('dateFilter').value = '';
-                document.getElementById('textFilter').value = '';
-                updateStats();
-                
-                // Aggiorna le distanze se c'è una posizione utente
-                if (userLocation) {
-                    showDistances();
-                } else {
-                    document.getElementById('distanceList').style.display = 'none';
+            // Refresh popups
+            app.map.closePopup();
+        }
+
+        // Update favorites count
+        function updateFavoritesCount() {
+            const count = app.favorites.length;
+            const badge = document.getElementById('favoritesCount');
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Show near me
+        function showNearMe() {
+            if (!app.userLocation) {
+                useGPS();
+                return;
+            }
+            
+            showView('list');
+            updateListView();
+        }
+
+        // Toggle filter sheet
+        function toggleFilterSheet() {
+            const sheet = document.getElementById('filterSheet');
+            const backdrop = document.getElementById('backdrop');
+            
+            if (sheet.classList.contains('active')) {
+                closeFilterSheet();
+            } else {
+                sheet.classList.add('active');
+                backdrop.classList.add('active');
+            }
+        }
+
+        // Close filter sheet
+        function closeFilterSheet() {
+            document.getElementById('filterSheet').classList.remove('active');
+            document.getElementById('backdrop').classList.remove('active');
+        }
+
+        // Handle search
+        function handleSearch(value) {
+            app.filters.search = value;
+            updateFilterBadge();
+        }
+
+        // Toggle category
+        function toggleCategory(chip) {
+            const category = chip.dataset.category;
+            chip.classList.toggle('active');
+            
+            const index = app.filters.categories.indexOf(category);
+            if (index > -1) {
+                app.filters.categories.splice(index, 1);
+            } else {
+                app.filters.categories.push(category);
+            }
+            
+            updateFilterBadge();
+        }
+
+        // Update date filter
+        function updateDateFilter() {
+            app.filters.dateFrom = document.getElementById('dateFrom').value;
+            app.filters.dateTo = document.getElementById('dateTo').value;
+            updateFilterBadge();
+        }
+
+        // Update filter badge
+        function updateFilterBadge() {
+            let count = 0;
+            if (app.filters.search) count++;
+            if (app.filters.categories.length > 0) count++;
+            if (app.filters.dateFrom || app.filters.dateTo) count++;
+            
+            const badge = document.getElementById('filterBadge');
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Apply filters
+        function applyFilters() {
+            // Update markers on map
+            app.markerCluster.clearLayers();
+            const filteredSagre = applyFiltersToSagre(app.sagre);
+            
+            app.markers.forEach(marker => {
+                if (filteredSagre.includes(marker.sagraData)) {
+                    app.markerCluster.addLayer(marker);
                 }
+            });
+            
+            // Update list view if active
+            if (app.currentView === 'list') {
+                updateListView();
             }
             
-            // Funzione per aggiornare le statistiche
-            function updateStats() {
-                document.getElementById('statsText').textContent = 
-                    `Visualizzate tutte le ${markers.length} sagre`;
+            closeFilterSheet();
+            showToast(`${filteredSagre.length} sagre trovate`);
+        }
+
+        // Reset filters
+        function resetFilters() {
+            app.filters = {
+                search: '',
+                categories: [],
+                dateFrom: null,
+                dateTo: null
+            };
+            
+            document.getElementById('searchInput').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.querySelectorAll('.chip').forEach(chip => chip.classList.remove('active'));
+            
+            updateFilterBadge();
+            applyFilters();
+        }
+
+        // Set user location
+        function setUserLocation() {
+            const input = document.getElementById('locationInput').value.toLowerCase().trim();
+            if (!input) {
+                showToast('Inserisci una città');
+                return;
             }
             
-            // Inizializza i marker
-            createMarkers();
+            const coords = townCoordinates[input];
+            if (!coords) {
+                showToast('Città non trovata. Prova con Perugia, Assisi, Todi...');
+                return;
+            }
+            
+            updateUserLocation(coords, input);
+            closeFilterSheet();
+        }
+
+        // Use GPS
+        function useGPS() {
+            if (!navigator.geolocation) {
+                showToast('Geolocalizzazione non supportata');
+                return;
+            }
+            
+            showToast('Rilevamento posizione GPS...');
+            
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    const coords = [position.coords.latitude, position.coords.longitude];
+                    updateUserLocation(coords, 'Posizione GPS');
+                    showToast('Posizione rilevata');
+                },
+                error => {
+                    showToast('Errore nel rilevamento posizione');
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // Update user location
+        function updateUserLocation(coords, label) {
+            app.userLocation = coords;
+            
+            // Remove old marker
+            if (app.userMarker) {
+                app.map.removeLayer(app.userMarker);
+            }
+            
+            // Add new marker
+            const userIcon = L.divIcon({
+                html: '<div style="background: #ef4444; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">📍</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+            
+            app.userMarker = L.marker(coords, { icon: userIcon })
+                .bindPopup(`<strong>La tua posizione: ${label}</strong>`)
+                .addTo(app.map);
+            
+            app.map.setView(coords, 10);
+            
+            // Update list if active
+            if (app.currentView === 'list') {
+                updateListView();
+            }
+        }
+
+        // Toggle dark mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            showToast(isDark ? 'Modalità scura attivata' : 'Modalità chiara attivata');
+        }
+
+        // Show toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check dark mode preference
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+            }
+            
+            // Initialize map
+            initMap();
+            
+            // Update favorites count
+            updateFavoritesCount();
+            
+            // Add swipe gesture for filter sheet
+            let touchStartY = 0;
+            const sheet = document.getElementById('filterSheet');
+            
+            sheet.addEventListener('touchstart', e => {
+                touchStartY = e.touches[0].clientY;
+            });
+            
+            sheet.addEventListener('touchmove', e => {
+                const touchY = e.touches[0].clientY;
+                const deltaY = touchY - touchStartY;
+                
+                if (deltaY > 50) {
+                    closeFilterSheet();
+                }
+            });
         });
     </script>
 </body>
